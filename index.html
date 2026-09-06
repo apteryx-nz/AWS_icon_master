@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS アイコンマスター</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ===== スタイル定義 ===== -->
+  <style>
+    /* カラー変数定義 */
+    :root {
+      --aws-orange: #FF9900;
+      --aws-squid: #232F3E;
+      --bg-color: #2C2C2C;
+      --card-bg: #3A3A3A;
+      --text-color: #E0E0E0;
+      --muted-color: #999;
+    }
+    /* ページ全体のレイアウト */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+    /* メインコンテナ */
+    .container {
+      width: 100%;
+      max-width: 650px;
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    /* 見出しスタイル */
+    h1, h2 {
+      text-align: center;
+      color: var(--aws-orange);
+    }
+    /* 共通ボタン */
+    .btn {
+      background-color: var(--aws-orange);
+      color: #fff;
+      border: none;
+      padding: 12px 20px;
+      margin: 8px 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    /* サブボタン（ダーク） */
+    .btn-secondary { background-color: var(--aws-squid); }
+    /* 画面切り替え制御 */
+    .screen { display: none; }
+    .screen.active { display: block; }
+    
+    /* クイズヘッダー：問題数・正解数・ホームボタン */
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+      font-size: 14px;
+      color: var(--muted-color);
+    }
+    .quiz-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .icon-container {
+      text-align: center;
+      margin: 20px 0;
+      min-height: 120px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .icon-container img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .option-btn {
+      background: #4A4A4A;
+      color: var(--text-color);
+      border: 2px solid #666;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+    }
+    /* 回答ボタン：ホバー・正解・不正解 */
+    .option-btn:hover { border-color: var(--aws-orange); }
+    .option-btn.correct { background: #1a5c2a; border-color: #28a745; color: #fff; }
+    .option-btn.wrong { background: #5c1a1a; border-color: #dc3545; color: #fff; }
+    .option-btn:disabled { cursor: default; opacity: 1; }
+    /* 次の問題ボタン */
+    #next-btn { display: block; width: 100%; margin-top: 16px; }
+    #next-btn:disabled { opacity: 0.4; cursor: default; }
+
+    /* ===== お疲れさまでした画面 ===== */
+    #congrats-screen { text-align: center; }
+    .confetti-wrap { font-size: 48px; letter-spacing: 8px; margin: 20px 0; animation: pop 0.6s ease; }
+    @keyframes pop { 0%{transform:scale(0.5);opacity:0} 80%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+
+    /* ===== 統計・グラフ画面 ===== */
+    .stats-summary {
+      display: flex;
+      justify-content: space-around;
+      background: #4A4A4A;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 20px; font-weight: bold; color: var(--aws-orange); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- ホーム画面 -->
+  <div id="home-screen" class="screen active">
+    <h1>☁️ AWS アイコンマスター</h1>
+    <p style="text-align:center;">出題数を選択してスタートしてください</p>
+    <div style="text-align:center; margin: 30px 0;">
+      <button class="btn" onclick="startQuiz(10)">10問コース</button>
+      <button class="btn" onclick="startQuiz(30)">30問コース</button>
+      <button class="btn" onclick="startQuiz(50)">50問コース</button>
+    </div>
+    <div style="text-align:center;">
+      <button class="btn btn-secondary" onclick="showHistory()">📊 学習履歴・グラフを見る</button>
+    </div>
+  </div>
+
+  <!-- クイズ画面 -->
+  <div id="quiz-screen" class="screen">
+    <div class="quiz-header">
+      <div class="quiz-header-left">
+        <span id="quiz-progress">第 1 問 / 10 問</span>
+        <span id="quiz-score-preview">正解数: 0</span>
+      </div>
+      <button class="btn btn-secondary" style="padding:6px 12px; font-size:13px;" onclick="confirmBackToHome()">⌂ ホームに戻る</button>
+    </div>
+    <div class="icon-container">
+      <img id="quiz-icon" src="" alt="AWS Icon">
+    </div>
+    <div class="options-grid" id="options-container"></div>
+    <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>次の問題 ▶</button>
+  </div>
+
+  <!-- お疲れさまでした画面 -->
+  <div id="congrats-screen" class="screen">
+    <div class="confetti-wrap">🎉🎊🎉🎊🎉</div>
+    <h2>お疲れさまでした！</h2>
+    <p id="congrats-msg" style="font-size:18px; margin: 16px 0;"></p>
+    <div class="stats-summary">
+      <div class="stat-item"><div>問題数</div><div class="stat-value" id="cg-total">0</div></div>
+      <div class="stat-item"><div>正解数</div><div class="stat-value" id="cg-correct">0</div></div>
+      <div class="stat-item"><div>正答率</div><div class="stat-value" id="cg-rate">0%</div></div>
+    </div>
+    <div style="margin-top:20px;">
+      <button class="btn" onclick="showScreen('home-screen')">もう一度挑戦</button>
+      <button class="btn btn-secondary" onclick="showHistory()">📊 履歴を確認</button>
+    </div>
+  </div>
+
+  <!-- 結果画面 -->
+  <div id="result-screen" class="screen">
+    <h2>🎉 クイズ結果</h2>
+    <div class="stats-summary">
+      <div class="stat-item">
+        <div>問題数</div>
+        <div class="stat-value" id="res-total">0</div>
+      </div>
+      <div class="stat-item">
+        <div>正解数</div>
+        <div class="stat-value" id="res-correct">0</div>
+      </div>
+      <div class="stat-item">
+        <div>正答率</div>
+        <div class="stat-value" id="res-rate">0%</div>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <button class="btn" onclick="showScreen('home-screen')">もう一度挑戦</button>
+      <button class="btn btn-secondary" onclick="showHistory()">📊 履歴を確認</button>
+    </div>
+  </div>
+
+  <!-- 履歴画面 -->
+  <div id="history-screen" class="screen">
+    <h2>📊 学習履歴</h2>
+    <div class="stats-summary">
+      <div class="stat-item">
+        <div>累計挑戦回数</div>
+        <div class="stat-value" id="total-sessions">0回</div>
+      </div>
+      <div class="stat-item">
+        <div>総解答数</div>
+        <div class="stat-value" id="total-answered">0問</div>
+      </div>
+      <div class="stat-item">
+        <div>総合正答率</div>
+        <div class="stat-value" id="total-accuracy">0%</div>
+      </div>
+    </div>
+    <canvas id="historyChart" style="max-height: 350px;"></canvas>
+    <div style="text-align:center; margin-top: 20px;">
+      <button class="btn" onclick="showScreen('home-screen')">ホームに戻る</button>
+      <button class="btn btn-secondary" onclick="resetHistory()">🗑️ 履歴をリセット</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==========================================
+  // 【重要】ローカルのAWSアイコンリスト
+  // パスはお手元のフォルダ階層に合わせて調整してください
+  // 形式: { name: 'サービス名', icon: '画像パス' }
+  // ==========================================
+  const AWS_SERVICES = [
+
+
+//    { name: "Amazon EC2", icon: "./AWS_icon_pkg/Compute/Amazon-EC2.svg" },
+//    { name: "AWS Lambda", icon: "./AWS_icon_pkg/Compute/AWS-Lambda.svg" },
+//    { name: "Amazon ECS", icon: "./AWS_icon_pkg/Compute/Amazon-Elastic-Container-Service.svg" },
+//    { name: "Amazon EKS", icon: "./AWS_icon_pkg/Compute/Amazon-Elastic-Kubernetes-Service.svg" },
+//    { name: "Amazon S3", icon: "./AWS_icon_pkg/Storage/Amazon-Simple-Storage-Service.svg" },
+//    { name: "Amazon EBS", icon: "./AWS_icon_pkg/Storage/Amazon-Elastic-Block-Store.svg" },
+//    { name: "Amazon RDS", icon: "./AWS_icon_pkg/Database/Amazon-RDS.svg" },
+//    { name: "Amazon DynamoDB", icon: "./AWS_icon_pkg/Database/Amazon-DynamoDB.svg" },
+//    { name: "Amazon Aurora", icon: "./AWS_icon_pkg/Database/Amazon-Aurora.svg" },
+//    { name: "Amazon VPC", icon: "./AWS_icon_pkg/Networking/Amazon-Virtual-Private-Cloud.svg" },
+//    { name: "Amazon CloudFront", icon: "./AWS_icon_pkg/Networking/Amazon-CloudFront.svg" },
+//    { name: "Amazon Route 53", icon: "./AWS_icon_pkg/Networking/Amazon-Route-53.svg" },
+//    { name: "AWS IAM", icon: "./AWS_icon_pkg/Security/AWS-Identity-and-Access-Management.svg" },
+//    { name: "AWS SQS", icon: "./AWS_icon_pkg/AppIntegration/Amazon-Simple-Queue-Service.svg" },
+//    { name: "AWS SNS", icon: "./AWS_icon_pkg/AppIntegration/Amazon-Simple-Notification-Service.svg" }
+ 
+{ name: 'Auto Scaling group', icon: './AWS_icon_pkg/Architecture-Group-Icons/Auto-Scaling-group_32.png' },
+{ name: 'AWS Account', icon: './AWS_icon_pkg/Architecture-Group-Icons/AWS-Account_32.png' },
+{ name: 'AWS Cloud logo', icon: './AWS_icon_pkg/Architecture-Group-Icons/AWS-Cloud-logo_32.png' },
+{ name: 'AWS Cloud', icon: './AWS_icon_pkg/Architecture-Group-Icons/AWS-Cloud_32.png' },
+{ name: 'AWS IoT Greengrass Deployment', icon: './AWS_icon_pkg/Architecture-Group-Icons/AWS-IoT-Greengrass-Deployment_32.png' },
+{ name: 'Corporate data center', icon: './AWS_icon_pkg/Architecture-Group-Icons/Corporate-data-center_32.png' },
+{ name: 'EC2 instance contents', icon: './AWS_icon_pkg/Architecture-Group-Icons/EC2-instance-contents_32.png' },
+{ name: 'Private subnet', icon: './AWS_icon_pkg/Architecture-Group-Icons/Private-subnet_32.png' },
+{ name: 'Public subnet', icon: './AWS_icon_pkg/Architecture-Group-Icons/Public-subnet_32.png' },
+{ name: 'Region', icon: './AWS_icon_pkg/Architecture-Group-Icons/Region_32.png' },
+{ name: 'Server contents', icon: './AWS_icon_pkg/Architecture-Group-Icons/Server-contents_32.png' },
+{ name: 'Spot Fleet', icon: './AWS_icon_pkg/Architecture-Group-Icons/Spot-Fleet_32.png' },
+{ name: 'Virtual private cloud VPC', icon: './AWS_icon_pkg/Architecture-Group-Icons/Virtual-private-cloud-VPC_32.png' },
+{ name: 'Amazon API Gateway', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-API-Gateway_48.png' },
+{ name: 'Amazon AppFlow', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-AppFlow_48.png' },
+{ name: 'Amazon Application Recovery Controller', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Application-Recovery-Controller_48.png' },
+{ name: 'Amazon Athena', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Athena_48.png' },
+{ name: 'Amazon Augmented AI A2I', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Augmented-AI-A2I_48.png' },
+{ name: 'Amazon Aurora', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Aurora_48.png' },
+{ name: 'Amazon Bedrock AgentCore', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Bedrock-AgentCore_48.png' },
+{ name: 'Amazon Bedrock', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Bedrock_48.png' },
+{ name: 'Amazon Braket', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Braket_48.png' },
+{ name: 'Amazon Chime SDK', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Chime-SDK_48.png' },
+{ name: 'Amazon Chime', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Chime_48.png' },
+{ name: 'Amazon Cloud Directory', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Cloud-Directory_48.png' },
+{ name: 'Amazon CloudFront', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-CloudFront_48.png' },
+{ name: 'Amazon CloudSearch', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-CloudSearch_48.png' },
+{ name: 'Amazon CloudWatch', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-CloudWatch_48.png' },
+{ name: 'Amazon CodeCatalyst', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-CodeCatalyst_48.png' },
+{ name: 'Amazon CodeGuru', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-CodeGuru_48.png' },
+{ name: 'Amazon CodeWhisperer', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-CodeWhisperer_48.png' },
+{ name: 'Amazon Cognito', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Cognito_48.png' },
+{ name: 'Amazon Comprehend Medical', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Comprehend-Medical_48.png' },
+{ name: 'Amazon Comprehend', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Comprehend_48.png' },
+{ name: 'Amazon Connect', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Connect_48.png' },
+{ name: 'Amazon Corretto', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Corretto_48.png' },
+{ name: 'Amazon Data Firehose', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Data-Firehose_48.png' },
+{ name: 'Amazon DataZone', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-DataZone_48.png' },
+{ name: 'Amazon DCV', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-DCV_48.png' },
+{ name: 'Amazon Detective', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Detective_48.png' },
+{ name: 'Amazon DevOps Guru', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-DevOps-Guru_48.png' },
+{ name: 'Amazon DocumentDB', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-DocumentDB_48.png' },
+{ name: 'Amazon DynamoDB', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-DynamoDB_48.png' },
+{ name: 'Amazon EC2 Auto Scaling', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EC2-Auto-Scaling_48.png' },
+{ name: 'Amazon EC2 Image Builder', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EC2-Image-Builder_48.png' },
+{ name: 'Amazon EC2', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EC2_48.png' },
+{ name: 'Amazon ECS Anywhere', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-ECS-Anywhere_48.png' },
+{ name: 'Amazon EFS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EFS_48.png' },
+{ name: 'Amazon EKS Anywhere', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EKS-Anywhere_48.png' },
+{ name: 'Amazon EKS Distro', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EKS-Distro_48.png' },
+{ name: 'Amazon Elastic Block Store', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Elastic-Block-Store_48.png' },
+{ name: 'Amazon Elastic Container Registry', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Elastic-Container-Registry_48.png' },
+{ name: 'Amazon Elastic Container Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Elastic-Container-Service_48.png' },
+{ name: 'Amazon Elastic Inference', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Elastic-Inference_48.png' },
+{ name: 'Amazon Elastic Kubernetes Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Elastic-Kubernetes-Service_48.png' },
+{ name: 'Amazon Elastic VMware Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Elastic-VMware-Service_48.png' },
+{ name: 'Amazon ElastiCache', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-ElastiCache_48.png' },
+{ name: 'Amazon EMR', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EMR_48.png' },
+{ name: 'Amazon EventBridge', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-EventBridge_48.png' },
+{ name: 'Amazon File Cache', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-File-Cache_48.png' },
+{ name: 'Amazon FinSpace', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-FinSpace_48.png' },
+{ name: 'Amazon Forecast', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Forecast_48.png' },
+{ name: 'Amazon Fraud Detector', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Fraud-Detector_48.png' },
+{ name: 'Amazon FSx for Lustre', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-FSx-for-Lustre_48.png' },
+{ name: 'Amazon FSx for NetApp ONTAP', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-FSx-for-NetApp-ONTAP_48.png' },
+{ name: 'Amazon FSx for OpenZFS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-FSx-for-OpenZFS_48.png' },
+{ name: 'Amazon FSx for WFS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-FSx-for-WFS_48.png' },
+{ name: 'Amazon FSx', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-FSx_48.png' },
+{ name: 'Amazon GameLift Servers', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-GameLift-Servers_48.png' },
+{ name: 'Amazon GameLift Streams', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-GameLift-Streams_48.png' },
+{ name: 'Amazon GuardDuty', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-GuardDuty_48.png' },
+{ name: 'Amazon Inspector', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Inspector_48.png' },
+{ name: 'Amazon Interactive Video Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Interactive-Video-Service_48.png' },
+{ name: 'Amazon Kendra', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Kendra_48.png' },
+{ name: 'Amazon Keyspaces', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Keyspaces_48.png' },
+{ name: 'Amazon Kinesis Data Streams', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Kinesis-Data-Streams_48.png' },
+{ name: 'Amazon Kinesis Video Streams', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Kinesis-Video-Streams_48.png' },
+{ name: 'Amazon Kinesis', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Kinesis_48.png' },
+{ name: 'Amazon Lex', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Lex_48.png' },
+{ name: 'Amazon Lightsail for Research', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Lightsail-for-Research_48.png' },
+{ name: 'Amazon Lightsail', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Lightsail_48.png' },
+{ name: 'Amazon Location Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Location-Service_48.png' },
+{ name: 'Amazon Lookout for Equipment', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Lookout-for-Equipment_48.png' },
+{ name: 'Amazon Lookout for Vision', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Lookout-for-Vision_48.png' },
+{ name: 'Amazon Macie', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Macie_48.png' },
+{ name: 'Amazon Managed Blockchain', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Managed-Blockchain_48.png' },
+{ name: 'Amazon Managed Grafana', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Managed-Grafana_48.png' },
+{ name: 'Amazon Managed Service for Apache Flink', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Managed-Service-for-Apache-Flink_48.png' },
+{ name: 'Amazon Managed Service for Prometheus', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Managed-Service-for-Prometheus_48.png' },
+{ name: 'Amazon Managed Streaming for Apache Kafka', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Managed-Streaming-for-Apache-Kafka_48.png' },
+{ name: 'Amazon Managed Workflows for Apache Airflow', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Managed-Workflows-for-Apache-Airflow_48.png' },
+{ name: 'Amazon MemoryDB', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-MemoryDB_48.png' },
+{ name: 'Amazon Monitron', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Monitron_48.png' },
+{ name: 'Amazon MQ', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-MQ_48.png' },
+{ name: 'Amazon Neptune', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Neptune_48.png' },
+{ name: 'Amazon Nova', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Nova_48.png' },
+{ name: 'Amazon OpenSearch Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-OpenSearch-Service_48.png' },
+{ name: 'Amazon Personalize', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Personalize_48.png' },
+{ name: 'Amazon Pinpoint APIs', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Pinpoint-APIs_48.png' },
+{ name: 'Amazon Pinpoint', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Pinpoint_48.png' },
+{ name: 'Amazon Polly', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Polly_48.png' },
+{ name: 'Amazon Quick Suite', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Quick-Suite_48.png' },
+{ name: 'Amazon Q', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Q_48.png' },
+{ name: 'Amazon RDS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-RDS_48.png' },
+{ name: 'Amazon Redshift', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Redshift_48.png' },
+{ name: 'Amazon Rekognition', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Rekognition_48.png' },
+{ name: 'Amazon Route 53', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Route-53_48.png' },
+{ name: 'Amazon S3 on Outposts', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-S3-on-Outposts_48.png' },
+{ name: 'Amazon SageMaker AI', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-SageMaker-AI_48.png' },
+{ name: 'Amazon SageMaker Ground Truth', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-SageMaker-Ground-Truth_48.png' },
+{ name: 'Amazon SageMaker Studio Lab', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-SageMaker-Studio-Lab_48.png' },
+{ name: 'Amazon SageMaker', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-SageMaker_48.png' },
+{ name: 'Amazon Security Lake', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Security-Lake_48.png' },
+{ name: 'Amazon Simple Email Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Simple-Email-Service_48.png' },
+{ name: 'Amazon Simple Notification Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Simple-Notification-Service_48.png' },
+{ name: 'Amazon Simple Queue Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Simple-Queue-Service_48.png' },
+{ name: 'Amazon Simple Storage Service Glacier', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Simple-Storage-Service-Glacier_48.png' },
+{ name: 'Amazon Simple Storage Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Simple-Storage-Service_48.png' },
+{ name: 'Amazon Textract', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Textract_48.png' },
+{ name: 'Amazon Timestream', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Timestream_48.png' },
+{ name: 'Amazon Transcribe', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Transcribe_48.png' },
+{ name: 'Amazon Translate', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Translate_48.png' },
+{ name: 'Amazon Verified Permissions', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Verified-Permissions_48.png' },
+{ name: 'Amazon Virtual Private Cloud', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-Virtual-Private-Cloud_48.png' },
+{ name: 'Amazon VPC Lattice', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-VPC-Lattice_48.png' },
+{ name: 'Amazon WorkDocs SDK', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-WorkDocs-SDK_48.png' },
+{ name: 'Amazon WorkDocs', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-WorkDocs_48.png' },
+{ name: 'Amazon WorkMail', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-WorkMail_48.png' },
+{ name: 'Amazon WorkSpaces', icon: './AWS_icon_pkg/Architecture-Service-Icons/Amazon-WorkSpaces_48.png' },
+{ name: 'Apache MXNet on AWS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Apache-MXNet-on-AWS_48.png' },
+{ name: 'AWS Activate', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Activate_48.png' },
+{ name: 'AWS Amplify', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Amplify_48.png' },
+{ name: 'AWS App Mesh', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-App-Mesh_48.png' },
+{ name: 'AWS App Runner', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-App-Runner_48.png' },
+{ name: 'AWS App Studio', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-App-Studio_48.png' },
+{ name: 'AWS AppConfig', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-AppConfig_48.png' },
+{ name: 'AWS AppFabric', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-AppFabric_48.png' },
+{ name: 'AWS Application Auto Scaling', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Application-Auto-Scaling_48.png' },
+{ name: 'AWS Application Discovery Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Application-Discovery-Service_48.png' },
+{ name: 'AWS Application Migration Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Application-Migration-Service_48.png' },
+{ name: 'AWS AppSync', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-AppSync_48.png' },
+{ name: 'AWS Artifact', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Artifact_48.png' },
+{ name: 'AWS Audit Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Audit-Manager_48.png' },
+{ name: 'AWS Auto Scaling', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Auto-Scaling_48.png' },
+{ name: 'AWS B2B Data Interchange', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-B2B-Data-Interchange_48.png' },
+{ name: 'AWS Backint Agent', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Backint-Agent_48.png' },
+{ name: 'AWS Backup', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Backup_48.png' },
+{ name: 'AWS Batch', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Batch_48.png' },
+{ name: 'AWS Billing Conductor', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Billing-Conductor_48.png' },
+{ name: 'AWS Budgets', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Budgets_48.png' },
+{ name: 'AWS Certificate Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Certificate-Manager_48.png' },
+{ name: 'AWS Chatbot', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Chatbot_48.png' },
+{ name: 'AWS Clean Rooms', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Clean-Rooms_48.png' },
+{ name: 'AWS Client VPN', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Client-VPN_48.png' },
+{ name: 'AWS Cloud Control API', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cloud-Control-API_48.png' },
+{ name: 'AWS Cloud Development Kit', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cloud-Development-Kit_48.png' },
+{ name: 'AWS Cloud Map', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cloud-Map_48.png' },
+{ name: 'AWS Cloud WAN', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cloud-WAN_48.png' },
+{ name: 'AWS Cloud9', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cloud9_48.png' },
+{ name: 'AWS CloudFormation', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CloudFormation_48.png' },
+{ name: 'AWS CloudHSM', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CloudHSM_48.png' },
+{ name: 'AWS CloudShell', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CloudShell_48.png' },
+{ name: 'AWS CloudTrail', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CloudTrail_48.png' },
+{ name: 'AWS CodeArtifact', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CodeArtifact_48.png' },
+{ name: 'AWS CodeBuild', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CodeBuild_48.png' },
+{ name: 'AWS CodeCommit', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CodeCommit_48.png' },
+{ name: 'AWS CodeDeploy', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CodeDeploy_48.png' },
+{ name: 'AWS CodePipeline', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-CodePipeline_48.png' },
+{ name: 'AWS Command Line Interface', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Command-Line-Interface_48.png' },
+{ name: 'AWS Compute Optimizer', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Compute-Optimizer_48.png' },
+{ name: 'AWS Config', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Config_48.png' },
+{ name: 'AWS Console Mobile Application', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Console-Mobile-Application_48.png' },
+{ name: 'AWS Control Tower', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Control-Tower_48.png' },
+{ name: 'AWS Cost and Usage Report', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cost-and-Usage-Report_48.png' },
+{ name: 'AWS Cost Explorer', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Cost-Explorer_48.png' },
+{ name: 'AWS Data Exchange', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Data-Exchange_48.png' },
+{ name: 'AWS Data Transfer Terminal', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Data-Transfer-Terminal_48.png' },
+{ name: 'AWS Database Migration Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Database-Migration-Service_48.png' },
+{ name: 'AWS DataSync', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-DataSync_48.png' },
+{ name: 'AWS Deadline Cloud', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Deadline-Cloud_48.png' },
+{ name: 'AWS Deep Learning AMIs', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Deep-Learning-AMIs_48.png' },
+{ name: 'AWS Deep Learning Containers', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Deep-Learning-Containers_48.png' },
+{ name: 'AWS DeepRacer', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-DeepRacer_48.png' },
+{ name: 'AWS Device Farm', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Device-Farm_48.png' },
+{ name: 'AWS DevOps Agent', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-DevOps-Agent_48.png' },
+{ name: 'AWS Direct Connect', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Direct-Connect_48.png' },
+{ name: 'AWS Directory Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Directory-Service_48.png' },
+{ name: 'AWS Distro for OpenTelemetry', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Distro-for-OpenTelemetry_48.png' },
+{ name: 'AWS Elastic Beanstalk', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elastic-Beanstalk_48.png' },
+{ name: 'AWS Elastic Disaster Recovery', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elastic-Disaster-Recovery_48.png' },
+{ name: 'AWS Elemental Appliances & Software', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-Appliances-&-Software_48.png' },
+{ name: 'AWS Elemental Conductor', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-Conductor_48.png' },
+{ name: 'AWS Elemental Delta', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-Delta_48.png' },
+{ name: 'AWS Elemental Link', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-Link_48.png' },
+{ name: 'AWS Elemental Live', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-Live_48.png' },
+{ name: 'AWS Elemental MediaConnect', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-MediaConnect_48.png' },
+{ name: 'AWS Elemental MediaConvert', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-MediaConvert_48.png' },
+{ name: 'AWS Elemental MediaLive', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-MediaLive_48.png' },
+{ name: 'AWS Elemental MediaPackage', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-MediaPackage_48.png' },
+{ name: 'AWS Elemental MediaStore', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-MediaStore_48.png' },
+{ name: 'AWS Elemental MediaTailor', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-MediaTailor_48.png' },
+{ name: 'AWS Elemental Server', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Elemental-Server_48.png' },
+{ name: 'AWS End User Messaging', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-End-User-Messaging_48.png' },
+{ name: 'AWS Entity Resolution', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Entity-Resolution_48.png' },
+{ name: 'AWS Express Workflows', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Express-Workflows_48.png' },
+{ name: 'AWS Fargate', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Fargate_48.png' },
+{ name: 'AWS Fault Injection Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Fault-Injection-Service_48.png' },
+{ name: 'AWS Firewall Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Firewall-Manager_48.png' },
+{ name: 'AWS Global Accelerator', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Global-Accelerator_48.png' },
+{ name: 'AWS Glue DataBrew', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Glue-DataBrew_48.png' },
+{ name: 'AWS Glue', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Glue_48.png' },
+{ name: 'AWS Ground Station', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Ground-Station_48.png' },
+{ name: 'AWS Health Dashboard', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Health-Dashboard_48.png' },
+{ name: 'AWS HealthImaging', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-HealthImaging_48.png' },
+{ name: 'AWS HealthLake', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-HealthLake_48.png' },
+{ name: 'AWS HealthOmics', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-HealthOmics_48.png' },
+{ name: 'AWS HealthScribe', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-HealthScribe_48.png' },
+{ name: 'AWS IAM Identity Center', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IAM-Identity-Center_48.png' },
+{ name: 'AWS Identity and Access Management', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Identity-and-Access-Management_48.png' },
+{ name: 'AWS Infrastructure Composer', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Infrastructure-Composer_48.png' },
+{ name: 'AWS IoT Core', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-Core_48.png' },
+{ name: 'AWS IoT Device Defender', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-Device-Defender_48.png' },
+{ name: 'AWS IoT Device Management', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-Device-Management_48.png' },
+{ name: 'AWS IoT Events', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-Events_48.png' },
+{ name: 'AWS IoT ExpressLink', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-ExpressLink_48.png' },
+{ name: 'AWS IoT FleetWise', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-FleetWise_48.png' },
+{ name: 'AWS IoT Greengrass', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-Greengrass_48.png' },
+{ name: 'AWS IoT SiteWise', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-SiteWise_48.png' },
+{ name: 'AWS IoT TwinMaker', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IoT-TwinMaker_48.png' },
+{ name: 'AWS IQ', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-IQ_48.png' },
+{ name: 'AWS Key Management Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Key-Management-Service_48.png' },
+{ name: 'AWS Lake Formation', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Lake-Formation_48.png' },
+{ name: 'AWS Lambda', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Lambda_48.png' },
+{ name: 'AWS Launch Wizard', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Launch-Wizard_48.png' },
+{ name: 'AWS License Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-License-Manager_48.png' },
+{ name: 'AWS Local Zones', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Local-Zones_48.png' },
+{ name: 'AWS Mainframe Modernization', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Mainframe-Modernization_48.png' },
+{ name: 'AWS Managed Services', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Managed-Services_48.png' },
+{ name: 'AWS Management Console', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Management-Console_48.png' },
+{ name: 'AWS Marketplace', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Marketplace_Light_48.png' },
+{ name: 'AWS Migration Evaluator', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Migration-Evaluator_48.png' },
+{ name: 'AWS Migration Hub', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Migration-Hub_48.png' },
+{ name: 'AWS Network Firewall', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Network-Firewall_48.png' },
+{ name: 'AWS Neuron', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Neuron_48.png' },
+{ name: 'AWS Nitro Enclaves', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Nitro-Enclaves_48.png' },
+{ name: 'AWS Organizations', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Organizations_48.png' },
+{ name: 'AWS Outposts family', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Outposts-family_48.png' },
+{ name: 'AWS Outposts rack', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Outposts-rack_48.png' },
+{ name: 'AWS Outposts servers', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Outposts-servers_48.png' },
+{ name: 'AWS Panorama', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Panorama_48.png' },
+{ name: 'AWS Parallel Cluster', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Parallel-Cluster_48.png' },
+{ name: 'AWS Parallel Computing Service', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Parallel-Computing-Service_48.png' },
+{ name: 'AWS Partner Central', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Partner-Central_48.png' },
+{ name: 'AWS Payment Cryptography', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Payment-Cryptography_48.png' },
+{ name: 'AWS Private Certificate Authority', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Private-Certificate-Authority_48.png' },
+{ name: 'AWS PrivateLink', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-PrivateLink_48.png' },
+{ name: 'AWS Professional Services', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Professional-Services_48.png' },
+{ name: 'AWS Proton', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Proton_48.png' },
+{ name: 'AWS rePost Private', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-rePost-Private_48.png' },
+{ name: 'AWS rePost', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-rePost_48.png' },
+{ name: 'AWS Resilience Hub', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Resilience-Hub_48.png' },
+{ name: 'AWS Resource Access Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Resource-Access-Manager_48.png' },
+{ name: 'AWS Resource Explorer', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Resource-Explorer_48.png' },
+{ name: 'AWS RTB Fabric', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-RTB-Fabric_48.png' },
+{ name: 'AWS Secrets Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Secrets-Manager_48.png' },
+{ name: 'AWS Security Agent', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Security-Agent_48.png' },
+{ name: 'AWS Security Hub', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Security-Hub_48.png' },
+{ name: 'AWS Security Incident Response', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Security-Incident-Response_48.png' },
+{ name: 'AWS Serverless Application Repository', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Serverless-Application-Repository_48.png' },
+{ name: 'AWS Service Catalog', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Service-Catalog_48.png' },
+{ name: 'AWS Service Management Connector', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Service-Management-Connector_48.png' },
+{ name: 'AWS Shield', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Shield_48.png' },
+{ name: 'AWS Signer', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Signer_48.png' },
+{ name: 'AWS SimSpace Weaver', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-SimSpace-Weaver_48.png' },
+{ name: 'AWS Site to Site VPN', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Site-to-Site-VPN_48.png' },
+{ name: 'AWS Snowball Edge', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Snowball-Edge_48.png' },
+{ name: 'AWS Snowball', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Snowball_48.png' },
+{ name: 'AWS Step Functions', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Step-Functions_48.png' },
+{ name: 'AWS Storage Gateway', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Storage-Gateway_48.png' },
+{ name: 'AWS Supply Chain', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Supply-Chain_48.png' },
+{ name: 'AWS Support', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Support_48.png' },
+{ name: 'AWS Systems Manager', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Systems-Manager_48.png' },
+{ name: 'AWS Telco Network Builder', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Telco-Network-Builder_48.png' },
+{ name: 'AWS Thinkbox Deadline', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Thinkbox-Deadline_48.png' },
+{ name: 'AWS Thinkbox Frost', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Thinkbox-Frost_48.png' },
+{ name: 'AWS Thinkbox Krakatoa', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Thinkbox-Krakatoa_48.png' },
+{ name: 'AWS Thinkbox Stoke', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Thinkbox-Stoke_48.png' },
+{ name: 'AWS Thinkbox XMesh', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Thinkbox-XMesh_48.png' },
+{ name: 'AWS Tools and SDKs', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Tools-and-SDKs_48.png' },
+{ name: 'AWS Training Certification', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Training-Certification_48.png' },
+{ name: 'AWS Transfer Family', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Transfer-Family_48.png' },
+{ name: 'AWS Transform', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Transform_48.png' },
+{ name: 'AWS Transit Gateway', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Transit-Gateway_48.png' },
+{ name: 'AWS Trusted Advisor', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Trusted-Advisor_48.png' },
+{ name: 'AWS User Notifications', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-User-Notifications_48.png' },
+{ name: 'AWS Verified Access', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Verified-Access_48.png' },
+{ name: 'AWS WAF', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-WAF_48.png' },
+{ name: 'AWS Wavelength', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Wavelength_48.png' },
+{ name: 'AWS Well Architected Tool', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Well-Architected-Tool_48.png' },
+{ name: 'AWS Wickr', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-Wickr_48.png' },
+{ name: 'AWS X Ray', icon: './AWS_icon_pkg/Architecture-Service-Icons/AWS-X-Ray_48.png' },
+{ name: 'Bottlerocket', icon: './AWS_icon_pkg/Architecture-Service-Icons/Bottlerocket_48.png' },
+{ name: 'Elastic Fabric Adapter', icon: './AWS_icon_pkg/Architecture-Service-Icons/Elastic-Fabric-Adapter_48.png' },
+{ name: 'Elastic Load Balancing', icon: './AWS_icon_pkg/Architecture-Service-Icons/Elastic-Load-Balancing_48.png' },
+{ name: 'FreeRTOS', icon: './AWS_icon_pkg/Architecture-Service-Icons/FreeRTOS_48.png' },
+{ name: 'Open 3D Engine', icon: './AWS_icon_pkg/Architecture-Service-Icons/Open-3D-Engine_48.png' },
+{ name: 'Oracle Database at AWS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Oracle-Database-at-AWS_48.png' },
+{ name: 'PyTorch on AWS', icon: './AWS_icon_pkg/Architecture-Service-Icons/PyTorch-on-AWS_48.png' },
+{ name: 'Red Hat OpenShift Service on AWS', icon: './AWS_icon_pkg/Architecture-Service-Icons/Red-Hat-OpenShift-Service-on-AWS_48.png' },
+{ name: 'Reserved Instance Reporting', icon: './AWS_icon_pkg/Architecture-Service-Icons/Reserved-Instance-Reporting_48.png' },
+{ name: 'Savings Plans', icon: './AWS_icon_pkg/Architecture-Service-Icons/Savings-Plans_48.png' },
+{ name: 'TensorFlow on AWS', icon: './AWS_icon_pkg/Architecture-Service-Icons/TensorFlow-on-AWS_48.png' },
+{ name: 'Analytics', icon: './AWS_icon_pkg/Category-Icons/Analytics_48.png' },
+{ name: 'Application Integration', icon: './AWS_icon_pkg/Category-Icons/Application-Integration_48.png' },
+{ name: 'Artificial Intelligence', icon: './AWS_icon_pkg/Category-Icons/Artificial-Intelligence_48.png' },
+{ name: 'Blockchain', icon: './AWS_icon_pkg/Category-Icons/Blockchain_48.png' },
+{ name: 'Business Applications', icon: './AWS_icon_pkg/Category-Icons/Business-Applications_48.png' },
+{ name: 'Cloud Financial Management', icon: './AWS_icon_pkg/Category-Icons/Cloud-Financial-Management_48.png' },
+{ name: 'Compute', icon: './AWS_icon_pkg/Category-Icons/Compute_48.png' },
+{ name: 'Containers', icon: './AWS_icon_pkg/Category-Icons/Containers_48.png' },
+{ name: 'Customer Enablement', icon: './AWS_icon_pkg/Category-Icons/Customer-Enablement_48.png' },
+{ name: 'Customer Experience', icon: './AWS_icon_pkg/Category-Icons/Customer-Experience_48.png' },
+{ name: 'Databases', icon: './AWS_icon_pkg/Category-Icons/Databases_48.png' },
+{ name: 'Developer Tools', icon: './AWS_icon_pkg/Category-Icons/Developer-Tools_48.png' },
+{ name: 'End User Computing', icon: './AWS_icon_pkg/Category-Icons/End-User-Computing_48.png' },
+{ name: 'Front End Web Mobile', icon: './AWS_icon_pkg/Category-Icons/Front-End-Web-Mobile_48.png' },
+{ name: 'Games', icon: './AWS_icon_pkg/Category-Icons/Games_48.png' },
+{ name: 'Internet of Things', icon: './AWS_icon_pkg/Category-Icons/Internet-of-Things_48.png' },
+{ name: 'Management Tools', icon: './AWS_icon_pkg/Category-Icons/Management-Tools_48.png' },
+{ name: 'Media Services', icon: './AWS_icon_pkg/Category-Icons/Media-Services_48.png' },
+{ name: 'Migration Modernization', icon: './AWS_icon_pkg/Category-Icons/Migration-Modernization_48.png' },
+{ name: 'Multicloud and Hybrid', icon: './AWS_icon_pkg/Category-Icons/Multicloud-and-Hybrid_48.png' },
+{ name: 'Networking Content Delivery', icon: './AWS_icon_pkg/Category-Icons/Networking-Content-Delivery_48.png' },
+{ name: 'Quantum Technologies', icon: './AWS_icon_pkg/Category-Icons/Quantum-Technologies_48.png' },
+{ name: 'Satellite', icon: './AWS_icon_pkg/Category-Icons/Satellite_48.png' },
+{ name: 'Security Identity', icon: './AWS_icon_pkg/Category-Icons/Security-Identity_48.png' },
+{ name: 'Serverless', icon: './AWS_icon_pkg/Category-Icons/Serverless_48.png' },
+{ name: 'Storage', icon: './AWS_icon_pkg/Category-Icons/Storage_48.png' },
+{ name: 'Amazon API Gateway_Endpoint', icon: './AWS_icon_pkg/Resource-Icons/Amazon-API-Gateway_Endpoint_48.png' },
+{ name: 'Amazon Athena_Data Source Connectors', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Athena_Data-Source-Connectors_48.png' },
+{ name: 'Amazon Aurora Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-Instance_48.png' },
+{ name: 'Amazon Aurora MariaDB Instance Alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-MariaDB-Instance-Alternate_48.png' },
+{ name: 'Amazon Aurora MariaDB Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-MariaDB-Instance_48.png' },
+{ name: 'Amazon Aurora MySQL Instance Alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-MySQL-Instance-Alternate_48.png' },
+{ name: 'Amazon Aurora MySQL Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-MySQL-Instance_48.png' },
+{ name: 'Amazon Aurora Oracle Instance Alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-Oracle-Instance-Alternate_48.png' },
+{ name: 'Amazon Aurora Oracle Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-Oracle-Instance_48.png' },
+{ name: 'Amazon Aurora PIOPS Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-PIOPS-Instance_48.png' },
+{ name: 'Amazon Aurora PostgreSQL Instance Alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-PostgreSQL-Instance-Alternate_48.png' },
+{ name: 'Amazon Aurora PostgreSQL Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-PostgreSQL-Instance_48.png' },
+{ name: 'Amazon Aurora SQL Server Instance Alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-SQL-Server-Instance-Alternate_48.png' },
+{ name: 'Amazon Aurora SQL Server Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora-SQL-Server-Instance_48.png' },
+{ name: 'Amazon Aurora_Amazon Aurora Instance alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora_Amazon-Aurora-Instance-alternate_48.png' },
+{ name: 'Amazon Aurora_Amazon RDS Instance Aternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora_Amazon-RDS-Instance-Aternate_48.png' },
+{ name: 'Amazon Aurora_Amazon RDS Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora_Amazon-RDS-Instance_48.png' },
+{ name: 'Amazon Aurora_Trusted Language Extensions for PostgreSQL', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Aurora_Trusted-Language-Extensions-for-PostgreSQL_48.png' },
+{ name: 'Amazon Braket_Chandelier', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Chandelier_48.png' },
+{ name: 'Amazon Braket_Chip', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Chip_48.png' },
+{ name: 'Amazon Braket_Embedded Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Embedded-Simulator_48.png' },
+{ name: 'Amazon Braket_Managed Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Managed-Simulator_48.png' },
+{ name: 'Amazon Braket_Noise Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Noise-Simulator_48.png' },
+{ name: 'Amazon Braket_QPU', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_QPU_48.png' },
+{ name: 'Amazon Braket_Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Simulator-1_48.png' },
+{ name: 'Amazon Braket_Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Simulator-2_48.png' },
+{ name: 'Amazon Braket_Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Simulator-3_48.png' },
+{ name: 'Amazon Braket_Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Simulator-4_48.png' },
+{ name: 'Amazon Braket_Simulator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Simulator_48.png' },
+{ name: 'Amazon Braket_State Vector', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_State-Vector_48.png' },
+{ name: 'Amazon Braket_Tensor Network', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Braket_Tensor-Network_48.png' },
+{ name: 'Amazon CloudFront_Download Distribution', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudFront_Download-Distribution_48.png' },
+{ name: 'Amazon CloudFront_Edge Location', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudFront_Edge-Location_48.png' },
+{ name: 'Amazon CloudFront_Functions', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudFront_Functions_48.png' },
+{ name: 'Amazon CloudFront_Streaming Distribution', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudFront_Streaming-Distribution_48.png' },
+{ name: 'Amazon CloudSearch_Search Documents', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudSearch_Search-Documents_48.png' },
+{ name: 'Amazon CloudWatch_Alarm', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Alarm_48.png' },
+{ name: 'Amazon CloudWatch_Cross account Observability', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Cross-account-Observability_48.png' },
+{ name: 'Amazon CloudWatch_Data Protection', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Data-Protection_48.png' },
+{ name: 'Amazon CloudWatch_Event Event Based', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Event-Event-Based_48.png' },
+{ name: 'Amazon CloudWatch_Event Time Based', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Event-Time-Based_48.png' },
+{ name: 'Amazon CloudWatch_Evidently', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Evidently_48.png' },
+{ name: 'Amazon CloudWatch_Logs', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Logs_48.png' },
+{ name: 'Amazon CloudWatch_Metrics Insights', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Metrics-Insights_48.png' },
+{ name: 'Amazon CloudWatch_Rule', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Rule_48.png' },
+{ name: 'Amazon CloudWatch_RUM', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_RUM_48.png' },
+{ name: 'Amazon CloudWatch_Synthetics', icon: './AWS_icon_pkg/Resource-Icons/Amazon-CloudWatch_Synthetics_48.png' },
+{ name: 'Amazon DataZone_Business Data Catalog', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DataZone_Business-Data-Catalog_48.png' },
+{ name: 'Amazon DataZone_Data Portal', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DataZone_Data-Portal_48.png' },
+{ name: 'Amazon DataZone_Data Projects', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DataZone_Data-Projects_48.png' },
+{ name: 'Amazon DevOps Guru_Insights', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DevOps-Guru_Insights_48.png' },
+{ name: 'Amazon DocumentDB_Elastic Clusters', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DocumentDB_Elastic-Clusters_48.png' },
+{ name: 'Amazon DynamoDB_Amazon DynamoDB Accelerator', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Amazon-DynamoDB-Accelerator_48.png' },
+{ name: 'Amazon DynamoDB_Attributes', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Attributes_48.png' },
+{ name: 'Amazon DynamoDB_Attribute', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Attribute_48.png' },
+{ name: 'Amazon DynamoDB_Global secondary index', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Global-secondary-index_48.png' },
+{ name: 'Amazon DynamoDB_Items', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Items_48.png' },
+{ name: 'Amazon DynamoDB_Item', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Item_48.png' },
+{ name: 'Amazon DynamoDB_Standard Access Table Class', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Standard-Access-Table-Class_48.png' },
+{ name: 'Amazon DynamoDB_Standard Infrequent Access Table Class', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Standard-Infrequent-Access-Table-Class_48.png' },
+{ name: 'Amazon DynamoDB_Stream', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Stream_48.png' },
+{ name: 'Amazon DynamoDB_Table', icon: './AWS_icon_pkg/Resource-Icons/Amazon-DynamoDB_Table_48.png' },
+{ name: 'Amazon EC2_AMI', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_AMI_48.png' },
+{ name: 'Amazon EC2_Auto Scaling', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Auto-Scaling_48.png' },
+{ name: 'Amazon EC2_AWS Microservice Extractor for .NET', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_AWS-Microservice-Extractor-for-.NET_48.png' },
+{ name: 'Amazon EC2_DB Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_DB-Instance_48.png' },
+{ name: 'Amazon EC2_Elastic IP Address', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Elastic-IP-Address_48.png' },
+{ name: 'Amazon EC2_Instance with CloudWatch', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Instance-with-CloudWatch_48.png' },
+{ name: 'Amazon EC2_Instances', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Instances_48.png' },
+{ name: 'Amazon EC2_Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Instance_48.png' },
+{ name: 'Amazon EC2_Rescue', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Rescue_48.png' },
+{ name: 'Amazon EC2_Spot Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EC2_Spot-Instance_48.png' },
+{ name: 'Amazon Elastic Block Store_Amazon Data Lifecycle Manager', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Block-Store_Amazon-Data-Lifecycle-Manager_48.png' },
+{ name: 'Amazon Elastic Block Store_Multiple Volumes', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Block-Store_Multiple-Volumes_48.png' },
+{ name: 'Amazon Elastic Block Store_Snapshot', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Block-Store_Snapshot_48.png' },
+{ name: 'Amazon Elastic Block Store_Volume gp3', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Block-Store_Volume-gp3_48.png' },
+{ name: 'Amazon Elastic Block Store_Volume', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Block-Store_Volume_48.png' },
+{ name: 'Amazon Elastic Container Registry_Image', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Registry_Image_48.png' },
+{ name: 'Amazon Elastic Container Registry_Registry', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Registry_Registry_48.png' },
+{ name: 'Amazon Elastic Container Service_Container 1', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_Container-1_48.png' },
+{ name: 'Amazon Elastic Container Service_Container 2', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_Container-2_48.png' },
+{ name: 'Amazon Elastic Container Service_Container 3', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_Container-3_48.png' },
+{ name: 'Amazon Elastic Container Service_CopiIoT CLI', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_CopiIoT-CLI_48.png' },
+{ name: 'Amazon Elastic Container Service_ECS Service Connect', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_ECS-Service-Connect_48.png' },
+{ name: 'Amazon Elastic Container Service_Service', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_Service_48.png' },
+{ name: 'Amazon Elastic Container Service_Task', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Container-Service_Task_48.png' },
+{ name: 'Amazon Elastic File System_EFS Intelligent Tiering', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_EFS-Intelligent-Tiering_48.png' },
+{ name: 'Amazon Elastic File System_EFS One Zone Infrequent Access', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_EFS-One-Zone-Infrequent-Access_48.png' },
+{ name: 'Amazon Elastic File System_EFS One Zone', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_EFS-One-Zone_48.png' },
+{ name: 'Amazon Elastic File System_EFS Standard Infrequent Access', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_EFS-Standard-Infrequent-Access_48.png' },
+{ name: 'Amazon Elastic File System_EFS Standard', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_EFS-Standard_48.png' },
+{ name: 'Amazon Elastic File System_Elastic Throughput', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_Elastic-Throughput_48.png' },
+{ name: 'Amazon Elastic File System_File System', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-File-System_File-System_48.png' },
+{ name: 'Amazon Elastic Kubernetes Service_EKS on Outposts', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Elastic-Kubernetes-Service_EKS-on-Outposts_48.png' },
+{ name: 'Amazon ElastiCache_Cache Node', icon: './AWS_icon_pkg/Resource-Icons/Amazon-ElastiCache_Cache-Node_48.png' },
+{ name: 'Amazon ElastiCache_ElastiCache for Memcached', icon: './AWS_icon_pkg/Resource-Icons/Amazon-ElastiCache_ElastiCache-for-Memcached_48.png' },
+{ name: 'Amazon ElastiCache_ElastiCache for Redis', icon: './AWS_icon_pkg/Resource-Icons/Amazon-ElastiCache_ElastiCache-for-Redis_48.png' },
+{ name: 'Amazon ElastiCache_ElastiCache for Valkey', icon: './AWS_icon_pkg/Resource-Icons/Amazon-ElastiCache_ElastiCache-for-Valkey_48.png' },
+{ name: 'Amazon EMR_Cluster', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EMR_Cluster_48.png' },
+{ name: 'Amazon EMR_EMR Engine', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EMR_EMR-Engine_48.png' },
+{ name: 'Amazon EMR_HDFS Cluster', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EMR_HDFS-Cluster_48.png' },
+{ name: 'Amazon EventBridge Event', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge-Event_48.png' },
+{ name: 'Amazon EventBridge_Custom Event Bus', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Custom-Event-Bus_48.png' },
+{ name: 'Amazon EventBridge_Default Event Bus', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Default-Event-Bus_48.png' },
+{ name: 'Amazon EventBridge_Pipes', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Pipes_48.png' },
+{ name: 'Amazon EventBridge_Rule', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Rule_48.png' },
+{ name: 'Amazon EventBridge_Saas Partner Event', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Saas-Partner-Event_48.png' },
+{ name: 'Amazon EventBridge_Scheduler', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Scheduler_48.png' },
+{ name: 'Amazon EventBridge_Schema Registry', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Schema-Registry_48.png' },
+{ name: 'Amazon EventBridge_Schema', icon: './AWS_icon_pkg/Resource-Icons/Amazon-EventBridge_Schema_48.png' },
+{ name: 'Amazon File Cache_Hybrid NFS linked datasets', icon: './AWS_icon_pkg/Resource-Icons/Amazon-File-Cache_Hybrid-NFS-linked-datasets_48.png' },
+{ name: 'Amazon File Cache_On premises NFS linked datasets', icon: './AWS_icon_pkg/Resource-Icons/Amazon-File-Cache_On-premises-NFS-linked-datasets_48.png' },
+{ name: 'Amazon File Cache_S3 linked datasets', icon: './AWS_icon_pkg/Resource-Icons/Amazon-File-Cache_S3-linked-datasets_48.png' },
+{ name: 'Amazon Inspector_Agent', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Inspector_Agent_48.png' },
+{ name: 'Amazon Location Service_Geofence', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Location-Service_Geofence_48.png' },
+{ name: 'Amazon Location Service_Map ', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Location-Service_Map _48.png' },
+{ name: 'Amazon Location Service_Place', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Location-Service_Place_48.png' },
+{ name: 'Amazon Location Service_Routes', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Location-Service_Routes_48.png' },
+{ name: 'Amazon Location Service_Track ', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Location-Service_Track _48.png' },
+{ name: 'Amazon Managed Blockchain_Blockchain', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Managed-Blockchain_Blockchain_48.png' },
+{ name: 'Amazon MQ_Broker', icon: './AWS_icon_pkg/Resource-Icons/Amazon-MQ_Broker_48.png' },
+{ name: 'Amazon MSK_Amazon MSK Connect', icon: './AWS_icon_pkg/Resource-Icons/Amazon-MSK_Amazon-MSK-Connect_48.png' },
+{ name: 'Amazon OpenSearch Service_Cluster Administrator Node', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_Cluster-Administrator-Node_48.png' },
+{ name: 'Amazon OpenSearch Service_Data Node', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_Data-Node_48.png' },
+{ name: 'Amazon OpenSearch Service_Index', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_Index_48.png' },
+{ name: 'Amazon OpenSearch Service_Observability', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_Observability_48.png' },
+{ name: 'Amazon OpenSearch Service_OpenSearch Dashboards', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_OpenSearch-Dashboards_48.png' },
+{ name: 'Amazon OpenSearch Service_OpenSearch Ingestion', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_OpenSearch-Ingestion_48.png' },
+{ name: 'Amazon OpenSearch Service_Traces', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_Traces_48.png' },
+{ name: 'Amazon OpenSearch Service_UltraWarm Node', icon: './AWS_icon_pkg/Resource-Icons/Amazon-OpenSearch-Service_UltraWarm-Node_48.png' },
+{ name: 'Amazon Pinpoint_Journey', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Pinpoint_Journey_48.png' },
+{ name: 'Amazon RDS Proxy Instance Alternate', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS-Proxy-Instance-Alternate_48.png' },
+{ name: 'Amazon RDS Proxy Instance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS-Proxy-Instance_48.png' },
+{ name: 'Amazon RDS_Blue Green Deployments', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS_Blue-Green-Deployments_48.png' },
+{ name: 'Amazon RDS_Multi AZ DB Cluster', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS_Multi-AZ-DB-Cluster_48.png' },
+{ name: 'Amazon RDS_Multi AZ', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS_Multi-AZ_48.png' },
+{ name: 'Amazon RDS_Optimized Writes', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS_Optimized-Writes_48.png' },
+{ name: 'Amazon RDS_Trusted Language Extensions for PostgreSQL', icon: './AWS_icon_pkg/Resource-Icons/Amazon-RDS_Trusted-Language-Extensions-for-PostgreSQL_48.png' },
+{ name: 'Amazon Redshift_Auto copy', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_Auto-copy_48.png' },
+{ name: 'Amazon Redshift_Data Sharing Governance', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_Data-Sharing-Governance_48.png' },
+{ name: 'Amazon Redshift_Dense Compute Node', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_Dense-Compute-Node_48.png' },
+{ name: 'Amazon Redshift_Dense Storage Node', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_Dense-Storage-Node_48.png' },
+{ name: 'Amazon Redshift_ML', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_ML_48.png' },
+{ name: 'Amazon Redshift_Query Editor v2.0', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_Query-Editor-v2.0_48.png' },
+{ name: 'Amazon Redshift_RA3', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_RA3_48.png' },
+{ name: 'Amazon Redshift_Streaming Ingestion', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Redshift_Streaming-Ingestion_48.png' },
+{ name: 'Amazon Rekognition_Image', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Rekognition_Image_48.png' },
+{ name: 'Amazon Rekognition_Video', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Rekognition_Video_48.png' },
+{ name: 'Amazon Route 53 Hosted Zone', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53-Hosted-Zone_48.png' },
+{ name: 'Amazon Route 53_Readiness Checks', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53_Readiness-Checks_48.png' },
+{ name: 'Amazon Route 53_Resolver DNS Firewall', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53_Resolver-DNS-Firewall_48.png' },
+{ name: 'Amazon Route 53_Resolver Query Logging', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53_Resolver-Query-Logging_48.png' },
+{ name: 'Amazon Route 53_Resolver', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53_Resolver_48.png' },
+{ name: 'Amazon Route 53_Route Table', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53_Route-Table_48.png' },
+{ name: 'Amazon Route 53_Routing Controls', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Route-53_Routing-Controls_48.png' },
+{ name: 'Amazon SageMaker AI_Canvas', icon: './AWS_icon_pkg/Resource-Icons/Amazon-SageMaker-AI_Canvas_48.png' },
+{ name: 'Amazon SageMaker AI_Geospatial ML', icon: './AWS_icon_pkg/Resource-Icons/Amazon-SageMaker-AI_Geospatial-ML_48.png' },
+{ name: 'Amazon SageMaker AI_Model', icon: './AWS_icon_pkg/Resource-Icons/Amazon-SageMaker-AI_Model_48.png' },
+{ name: 'Amazon SageMaker AI_Notebook', icon: './AWS_icon_pkg/Resource-Icons/Amazon-SageMaker-AI_Notebook_48.png' },
+{ name: 'Amazon SageMaker AI_Shadow Testing', icon: './AWS_icon_pkg/Resource-Icons/Amazon-SageMaker-AI_Shadow-Testing_48.png' },
+{ name: 'Amazon SageMaker AI_Train', icon: './AWS_icon_pkg/Resource-Icons/Amazon-SageMaker-AI_Train_48.png' },
+{ name: 'Amazon Simple Email Service_Email', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Email-Service_Email_48.png' },
+{ name: 'Amazon Simple Notification Service_Email Notification', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Notification-Service_Email-Notification_48.png' },
+{ name: 'Amazon Simple Notification Service_HTTP Notification', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Notification-Service_HTTP-Notification_48.png' },
+{ name: 'Amazon Simple Notification Service_Topic', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Notification-Service_Topic_48.png' },
+{ name: 'Amazon Simple Queue Service_Message', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Queue-Service_Message_48.png' },
+{ name: 'Amazon Simple Queue Service_Queue', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Queue-Service_Queue_48.png' },
+{ name: 'Amazon Simple Storage Service Glacier_Archive', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service-Glacier_Archive_48.png' },
+{ name: 'Amazon Simple Storage Service Glacier_Vault', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service-Glacier_Vault_48.png' },
+{ name: 'Amazon Simple Storage Service_Bucket With Objects', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_Bucket-With-Objects_48.png' },
+{ name: 'Amazon Simple Storage Service_Bucket', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_Bucket_48.png' },
+{ name: 'Amazon Simple Storage Service_Directory bucket', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_Directory-bucket_48.png' },
+{ name: 'Amazon Simple Storage Service_General Access Points', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_General-Access-Points_48.png' },
+{ name: 'Amazon Simple Storage Service_Object', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_Object_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Batch Operations', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Batch-Operations_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Express One Zone', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Express-One-Zone_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Glacier Deep Archive', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Glacier-Deep-Archive_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Glacier Flexible Retrieval', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Glacier-Flexible-Retrieval_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Glacier Instant Retrieval', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Glacier-Instant-Retrieval_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Intelligent Tiering', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Intelligent-Tiering_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Multi Region Access Points', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Multi-Region-Access-Points_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Object Lambda Access Points', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Object-Lambda-Access-Points_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Object Lambda', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Object-Lambda_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Object Lock', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Object-Lock_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 On Outposts', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-On-Outposts_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 One Zone IA', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-One-Zone-IA_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Replication Time Control', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Replication-Time-Control_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Replication', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Replication_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Select', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Select_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Standard IA', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Standard-IA_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Standard', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Standard_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Storage Lens', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Storage-Lens_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Tables', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Tables_48.png' },
+{ name: 'Amazon Simple Storage Service_S3 Vectors', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_S3-Vectors_48.png' },
+{ name: 'Amazon Simple Storage Service_VPC Access Points', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Simple-Storage-Service_VPC-Access-Points_48.png' },
+{ name: 'Amazon Textract_Analyze Lending', icon: './AWS_icon_pkg/Resource-Icons/Amazon-Textract_Analyze-Lending_48.png' },
+{ name: 'Amazon VPC_Carrier Gateway', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Carrier-Gateway_48.png' },
+{ name: 'Amazon VPC_Customer Gateway', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Customer-Gateway_48.png' },
+{ name: 'Amazon VPC_Elastic Network Adapter', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Elastic-Network-Adapter_48.png' },
+{ name: 'Amazon VPC_Elastic Network Interface', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Elastic-Network-Interface_48.png' },
+{ name: 'Amazon VPC_Endpoints', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Endpoints_48.png' },
+{ name: 'Amazon VPC_Flow Logs', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Flow-Logs_48.png' },
+{ name: 'Amazon VPC_Internet Gateway', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Internet-Gateway_48.png' },
+{ name: 'Amazon VPC_NAT Gateway', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_NAT-Gateway_48.png' },
+{ name: 'Amazon VPC_Network Access Analyzer', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Network-Access-Analyzer_48.png' },
+{ name: 'Amazon VPC_Network Access Control List', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Network-Access-Control-List_48.png' },
+{ name: 'Amazon VPC_Peering Connection', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Peering-Connection_48.png' },
+{ name: 'Amazon VPC_Reachability Analyzer', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Reachability-Analyzer_48.png' },
+{ name: 'Amazon VPC_Router', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Router_48.png' },
+{ name: 'Amazon VPC_Traffic Mirroring', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Traffic-Mirroring_48.png' },
+{ name: 'Amazon VPC_Virtual private cloud VPC', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_Virtual-private-cloud-VPC_48.png' },
+{ name: 'Amazon VPC_VPN Connection', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_VPN-Connection_48.png' },
+{ name: 'Amazon VPC_VPN Gateway', icon: './AWS_icon_pkg/Resource-Icons/Amazon-VPC_VPN-Gateway_48.png' },
+{ name: 'Authenticated User', icon: './AWS_icon_pkg/Resource-Icons/Authenticated-User_48_Light.png' },
+{ name: 'AWS Amplify_AWS Amplify Studio', icon: './AWS_icon_pkg/Resource-Icons/AWS-Amplify_AWS-Amplify-Studio_48.png' },
+{ name: 'AWS App Mesh_Mesh', icon: './AWS_icon_pkg/Resource-Icons/AWS-App-Mesh_Mesh_48.png' },
+{ name: 'AWS App Mesh_Virtual Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-App-Mesh_Virtual-Gateway_48.png' },
+{ name: 'AWS App Mesh_Virtual Node', icon: './AWS_icon_pkg/Resource-Icons/AWS-App-Mesh_Virtual-Node_48.png' },
+{ name: 'AWS App Mesh_Virtual Router', icon: './AWS_icon_pkg/Resource-Icons/AWS-App-Mesh_Virtual-Router_48.png' },
+{ name: 'AWS App Mesh_Virtual Service', icon: './AWS_icon_pkg/Resource-Icons/AWS-App-Mesh_Virtual-Service_48.png' },
+{ name: 'AWS Application Discovery Service_AWS Agentless Collector', icon: './AWS_icon_pkg/Resource-Icons/AWS-Application-Discovery-Service_AWS-Agentless-Collector_48.png' },
+{ name: 'AWS Application Discovery Service_AWS Discovery Agent', icon: './AWS_icon_pkg/Resource-Icons/AWS-Application-Discovery-Service_AWS-Discovery-Agent_48.png' },
+{ name: 'AWS Application Discovery Service_Migration Evaluator Collector', icon: './AWS_icon_pkg/Resource-Icons/AWS-Application-Discovery-Service_Migration-Evaluator-Collector_48.png' },
+{ name: 'AWS Backup_Audit Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Audit-Manager_48.png' },
+{ name: 'AWS Backup_AWS Backup for AWS CloudFormation', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_AWS-Backup-for-AWS-CloudFormation_48.png' },
+{ name: 'AWS Backup_AWS Backup support for Amazon FSx for NetApp ONTAP', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_AWS-Backup-support-for-Amazon-FSx-for-NetApp-ONTAP_48.png' },
+{ name: 'AWS Backup_AWS Backup support for Amazon S3', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_AWS-Backup-support-for-Amazon-S3_48.png' },
+{ name: 'AWS Backup_AWS Backup Support for VMware Workloads', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_AWS-Backup-Support-for-VMware-Workloads_48.png' },
+{ name: 'AWS Backup_Backup Plan', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Backup-Plan_48.png' },
+{ name: 'AWS Backup_Backup Restore', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Backup-Restore_48.png' },
+{ name: 'AWS Backup_Backup Vault', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Backup-Vault_48.png' },
+{ name: 'AWS Backup_Compliance Reporting', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Compliance-Reporting_48.png' },
+{ name: 'AWS Backup_Compute', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Compute_48.png' },
+{ name: 'AWS Backup_Database', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Database_48.png' },
+{ name: 'AWS Backup_Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Gateway_48.png' },
+{ name: 'AWS Backup_Legal Hold', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Legal-Hold_48.png' },
+{ name: 'AWS Backup_Recovery Point Objective', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Recovery-Point-Objective_48.png' },
+{ name: 'AWS Backup_Recovery Time Objective', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Recovery-Time-Objective_48.png' },
+{ name: 'AWS Backup_Storage', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Storage_48.png' },
+{ name: 'AWS Backup_Vault Lock', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Vault-Lock_48.png' },
+{ name: 'AWS Backup_Virtual Machine Monitor', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Virtual-Machine-Monitor_48.png' },
+{ name: 'AWS Backup_Virtual Machine', icon: './AWS_icon_pkg/Resource-Icons/AWS-Backup_Virtual-Machine_48.png' },
+{ name: 'AWS Certificate Manager_Certificate Authority', icon: './AWS_icon_pkg/Resource-Icons/AWS-Certificate-Manager_Certificate-Authority_48.png' },
+{ name: 'AWS Cloud Digital Interface', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-Digital-Interface_48.png' },
+{ name: 'AWS Cloud Map_Namespace', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-Map_Namespace_48.png' },
+{ name: 'AWS Cloud Map_Resource', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-Map_Resource_48.png' },
+{ name: 'AWS Cloud Map_Service', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-Map_Service_48.png' },
+{ name: 'AWS Cloud WAN_Core Network Edge', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-WAN_Core-Network-Edge_48.png' },
+{ name: 'AWS Cloud WAN_Segment Network', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-WAN_Segment-Network_48.png' },
+{ name: 'AWS Cloud WAN_Transit Gateway Route Table Attachment', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud-WAN_Transit-Gateway-Route-Table-Attachment_48.png' },
+{ name: 'AWS Cloud9_Cloud9', icon: './AWS_icon_pkg/Resource-Icons/AWS-Cloud9_Cloud9_48.png' },
+{ name: 'AWS CloudFormation_Change Set', icon: './AWS_icon_pkg/Resource-Icons/AWS-CloudFormation_Change-Set_48.png' },
+{ name: 'AWS CloudFormation_Stack', icon: './AWS_icon_pkg/Resource-Icons/AWS-CloudFormation_Stack_48.png' },
+{ name: 'AWS CloudFormation_Template', icon: './AWS_icon_pkg/Resource-Icons/AWS-CloudFormation_Template_48.png' },
+{ name: 'AWS CloudTrail_CloudTrail Lake', icon: './AWS_icon_pkg/Resource-Icons/AWS-CloudTrail_CloudTrail-Lake_48.png' },
+{ name: 'AWS Data Exchange for APIs', icon: './AWS_icon_pkg/Resource-Icons/AWS-Data-Exchange-for-APIs_48.png' },
+{ name: 'AWS Database Migration Service_Database migration workflow or job', icon: './AWS_icon_pkg/Resource-Icons/AWS-Database-Migration-Service_Database-migration-workflow-or-job_48.png' },
+{ name: 'AWS Datasync_Agent', icon: './AWS_icon_pkg/Resource-Icons/AWS-Datasync_Agent_48.png' },
+{ name: 'AWS DataSync_Discovery', icon: './AWS_icon_pkg/Resource-Icons/AWS-DataSync_Discovery_48.png' },
+{ name: 'AWS Direct Connect_Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Direct-Connect_Gateway_48.png' },
+{ name: 'AWS Directory Service_AD Connector', icon: './AWS_icon_pkg/Resource-Icons/AWS-Directory-Service_AD-Connector_48.png' },
+{ name: 'AWS Directory Service_AWS Managed Microsoft AD', icon: './AWS_icon_pkg/Resource-Icons/AWS-Directory-Service_AWS-Managed-Microsoft-AD_48.png' },
+{ name: 'AWS Directory Service_Simple AD', icon: './AWS_icon_pkg/Resource-Icons/AWS-Directory-Service_Simple-AD_48.png' },
+{ name: 'AWS Elastic Beanstalk_Application', icon: './AWS_icon_pkg/Resource-Icons/AWS-Elastic-Beanstalk_Application_48.png' },
+{ name: 'AWS Elastic Beanstalk_Deployment', icon: './AWS_icon_pkg/Resource-Icons/AWS-Elastic-Beanstalk_Deployment_48.png' },
+{ name: 'AWS Elemental MediaConnect_MediaConnect Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Elemental-MediaConnect_MediaConnect-Gateway_48.png' },
+{ name: 'AWS Glue_AWS Glue for Ray', icon: './AWS_icon_pkg/Resource-Icons/AWS-Glue_AWS-Glue-for-Ray_48.png' },
+{ name: 'AWS Glue_Crawler', icon: './AWS_icon_pkg/Resource-Icons/AWS-Glue_Crawler_48.png' },
+{ name: 'AWS Glue_Data Catalog', icon: './AWS_icon_pkg/Resource-Icons/AWS-Glue_Data-Catalog_48.png' },
+{ name: 'AWS Glue_Data Quality', icon: './AWS_icon_pkg/Resource-Icons/AWS-Glue_Data-Quality_48.png' },
+{ name: 'AWS Identity Access Management_Add on', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Add-on_48.png' },
+{ name: 'AWS Identity Access Management_AWS STS Alternate', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_AWS-STS-Alternate_48.png' },
+{ name: 'AWS Identity Access Management_AWS STS', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_AWS-STS_48.png' },
+{ name: 'AWS Identity Access Management_Data Encryption Key', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Data-Encryption-Key_48.png' },
+{ name: 'AWS Identity Access Management_Encrypted Data', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Encrypted-Data_48.png' },
+{ name: 'AWS Identity Access Management_IAM Access Analyzer', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_IAM-Access-Analyzer_48.png' },
+{ name: 'AWS Identity Access Management_IAM Roles Anywhere', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_IAM-Roles-Anywhere_48.png' },
+{ name: 'AWS Identity Access Management_Long Term Security Credential', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Long-Term-Security-Credential_48.png' },
+{ name: 'AWS Identity Access Management_MFA Token', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_MFA-Token_48.png' },
+{ name: 'AWS Identity Access Management_Permissions', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Permissions_48.png' },
+{ name: 'AWS Identity Access Management_Role', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Role_48.png' },
+{ name: 'AWS Identity Access Management_Temporary Security Credential', icon: './AWS_icon_pkg/Resource-Icons/AWS-Identity-Access-Management_Temporary-Security-Credential_48.png' },
+{ name: 'AWS IoT Core_Device Advisor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Core_Device-Advisor_48.png' },
+{ name: 'AWS IoT Core_Device Location', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Core_Device-Location_48.png' },
+{ name: 'AWS IoT Device Defender_IoT Device Jobs', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Device-Defender_IoT-Device-Jobs_48.png' },
+{ name: 'AWS IoT Device Management_Fleet Hub', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Device-Management_Fleet-Hub_48.png' },
+{ name: 'AWS IoT Device Tester', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Device-Tester_48.png' },
+{ name: 'AWS IoT Greengrass_Artifact', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Artifact_48.png' },
+{ name: 'AWS IoT Greengrass_Component Machine Learning', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Component-Machine-Learning_48.png' },
+{ name: 'AWS IoT Greengrass_Component Nucleus', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Component-Nucleus_48.png' },
+{ name: 'AWS IoT Greengrass_Component Private', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Component-Private_48.png' },
+{ name: 'AWS IoT Greengrass_Component Public', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Component-Public_48.png' },
+{ name: 'AWS IoT Greengrass_Component', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Component_48.png' },
+{ name: 'AWS IoT Greengrass_Connector', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Connector_48.png' },
+{ name: 'AWS IoT Greengrass_Interprocess Communication', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Interprocess-Communication_48.png' },
+{ name: 'AWS IoT Greengrass_Protocol', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Protocol_48.png' },
+{ name: 'AWS IoT Greengrass_Recipe', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Recipe_48.png' },
+{ name: 'AWS IoT Greengrass_Stream Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Greengrass_Stream-Manager_48.png' },
+{ name: 'AWS IoT Hardware Board', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Hardware-Board_48.png' },
+{ name: 'AWS IoT Rule', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-Rule_48.png' },
+{ name: 'AWS IoT SiteWise_Asset Hierarchy', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-SiteWise_Asset-Hierarchy_48.png' },
+{ name: 'AWS IoT SiteWise_Asset Model', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-SiteWise_Asset-Model_48.png' },
+{ name: 'AWS IoT SiteWise_Asset Properties', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-SiteWise_Asset-Properties_48.png' },
+{ name: 'AWS IoT SiteWise_Asset', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-SiteWise_Asset_48.png' },
+{ name: 'AWS IoT SiteWise_Data Streams', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT-SiteWise_Data-Streams_48.png' },
+{ name: 'AWS IoT_Action', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Action_48.png' },
+{ name: 'AWS IoT_Actuator', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Actuator_48.png' },
+{ name: 'AWS IoT_Alexa_Enabled Device', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Alexa_Enabled-Device_48.png' },
+{ name: 'AWS IoT_Alexa_Skill', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Alexa_Skill_48.png' },
+{ name: 'AWS IoT_Alexa_Voice Service', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Alexa_Voice-Service_48.png' },
+{ name: 'AWS IoT_Certificate', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Certificate_48.png' },
+{ name: 'AWS IoT_Desired State', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Desired-State_48.png' },
+{ name: 'AWS IoT_Device Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Device-Gateway_48.png' },
+{ name: 'AWS IoT_Echo', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Echo_48.png' },
+{ name: 'AWS IoT_Fire TV_Stick', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Fire-TV_Stick_48.png' },
+{ name: 'AWS IoT_Fire_TV', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Fire_TV_48.png' },
+{ name: 'AWS IoT_HTTP2 Protocol', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_HTTP2-Protocol_48.png' },
+{ name: 'AWS IoT_HTTP_Protocol', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_HTTP_Protocol_48.png' },
+{ name: 'AWS IoT_Lambda_Function', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Lambda_Function_48.png' },
+{ name: 'AWS IoT_LoRaWAN Protocol', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_LoRaWAN-Protocol_48.png' },
+{ name: 'AWS IoT_MQTT_Protocol', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_MQTT_Protocol_48.png' },
+{ name: 'AWS IoT_Over Air Update', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Over-Air-Update_48.png' },
+{ name: 'AWS IoT_Policy', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Policy_48.png' },
+{ name: 'AWS IoT_Reported State', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Reported-State_48.png' },
+{ name: 'AWS IoT_Sailboat', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Sailboat_48.png' },
+{ name: 'AWS IoT_Sensor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Sensor_48.png' },
+{ name: 'AWS IoT_Servo', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Servo_48.png' },
+{ name: 'AWS IoT_Shadow', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Shadow_48.png' },
+{ name: 'AWS IoT_Simulator', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Simulator_48.png' },
+{ name: 'AWS IoT_Thing_Bank', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Bank_48.png' },
+{ name: 'AWS IoT_Thing_Bicycle', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Bicycle_48.png' },
+{ name: 'AWS IoT_Thing_Camera', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Camera_48.png' },
+{ name: 'AWS IoT_Thing_Cart', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Cart_48.png' },
+{ name: 'AWS IoT_Thing_Car', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Car_48.png' },
+{ name: 'AWS IoT_Thing_Coffee Pot', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Coffee-Pot_48.png' },
+{ name: 'AWS IoT_Thing_Door Lock', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Door-Lock_48.png' },
+{ name: 'AWS IoT_Thing_Factory', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Factory_48.png' },
+{ name: 'AWS IoT_Thing_FreeRTOS Device', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_FreeRTOS-Device_48.png' },
+{ name: 'AWS IoT_Thing_Generic', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Generic_48.png' },
+{ name: 'AWS IoT_Thing_House', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_House_48.png' },
+{ name: 'AWS IoT_Thing_Humidity Sensor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Humidity-Sensor_48.png' },
+{ name: 'AWS IoT_Thing_Industrial PC', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Industrial-PC_48.png' },
+{ name: 'AWS IoT_Thing_Lightbulb', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Lightbulb_48.png' },
+{ name: 'AWS IoT_Thing_Medical Emergency', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Medical-Emergency_48.png' },
+{ name: 'AWS IoT_Thing_PLC', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_PLC_48.png' },
+{ name: 'AWS IoT_Thing_Police Emergency', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Police-Emergency_48.png' },
+{ name: 'AWS IoT_Thing_Relay', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Relay_48.png' },
+{ name: 'AWS IoT_Thing_Stacklight', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Stacklight_48.png' },
+{ name: 'AWS IoT_Thing_Temperature Humidity Sensor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Temperature-Humidity-Sensor_48.png' },
+{ name: 'AWS IoT_Thing_Temperature Sensor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Temperature-Sensor_48.png' },
+{ name: 'AWS IoT_Thing_Temperature Vibration Sensor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Temperature-Vibration-Sensor_48.png' },
+{ name: 'AWS IoT_Thing_Thermostat', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Thermostat_48.png' },
+{ name: 'AWS IoT_Thing_Travel', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Travel_48.png' },
+{ name: 'AWS IoT_Thing_Utility', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Utility_48.png' },
+{ name: 'AWS IoT_Thing_Vibration Sensor', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Vibration-Sensor_48.png' },
+{ name: 'AWS IoT_Thing_Windfarm', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Thing_Windfarm_48.png' },
+{ name: 'AWS IoT_Topic', icon: './AWS_icon_pkg/Resource-Icons/AWS-IoT_Topic_48.png' },
+{ name: 'AWS Key Management Service_External Key Store', icon: './AWS_icon_pkg/Resource-Icons/AWS-Key-Management-Service_External-Key-Store_48.png' },
+{ name: 'AWS Lake Formation_Data Lake', icon: './AWS_icon_pkg/Resource-Icons/AWS-Lake-Formation_Data-Lake_48.png' },
+{ name: 'AWS Lambda_Lambda Function', icon: './AWS_icon_pkg/Resource-Icons/AWS-Lambda_Lambda-Function_48.png' },
+{ name: 'AWS License Manager_Application Discovery', icon: './AWS_icon_pkg/Resource-Icons/AWS-License-Manager_Application-Discovery_48.png' },
+{ name: 'AWS License Manager_License Blending', icon: './AWS_icon_pkg/Resource-Icons/AWS-License-Manager_License-Blending_48.png' },
+{ name: 'AWS Mainframe Modernization_Analyzer', icon: './AWS_icon_pkg/Resource-Icons/AWS-Mainframe-Modernization_Analyzer_48.png' },
+{ name: 'AWS Mainframe Modernization_Compiler', icon: './AWS_icon_pkg/Resource-Icons/AWS-Mainframe-Modernization_Compiler_48.png' },
+{ name: 'AWS Mainframe Modernization_Converter', icon: './AWS_icon_pkg/Resource-Icons/AWS-Mainframe-Modernization_Converter_48.png' },
+{ name: 'AWS Mainframe Modernization_Developer', icon: './AWS_icon_pkg/Resource-Icons/AWS-Mainframe-Modernization_Developer_48.png' },
+{ name: 'AWS Mainframe Modernization_Runtime', icon: './AWS_icon_pkg/Resource-Icons/AWS-Mainframe-Modernization_Runtime_48.png' },
+{ name: 'AWS Management Console', icon: './AWS_icon_pkg/Resource-Icons/AWS-Management-Console_48_Light.png' },
+{ name: 'AWS Migration Hub_Refactor Spaces Applications', icon: './AWS_icon_pkg/Resource-Icons/AWS-Migration-Hub_Refactor-Spaces-Applications_48.png' },
+{ name: 'AWS Migration Hub_Refactor Spaces Environments', icon: './AWS_icon_pkg/Resource-Icons/AWS-Migration-Hub_Refactor-Spaces-Environments_48.png' },
+{ name: 'AWS Migration Hub_Refactor Spaces Services', icon: './AWS_icon_pkg/Resource-Icons/AWS-Migration-Hub_Refactor-Spaces-Services_48.png' },
+{ name: 'AWS Network Firewall_Endpoints', icon: './AWS_icon_pkg/Resource-Icons/AWS-Network-Firewall_Endpoints_48.png' },
+{ name: 'AWS Organizations_Account', icon: './AWS_icon_pkg/Resource-Icons/AWS-Organizations_Account_48.png' },
+{ name: 'AWS Organizations_Management Account', icon: './AWS_icon_pkg/Resource-Icons/AWS-Organizations_Management-Account_48.png' },
+{ name: 'AWS Organizations_Organizational Unit', icon: './AWS_icon_pkg/Resource-Icons/AWS-Organizations_Organizational-Unit_48.png' },
+{ name: 'AWS Security Hub_Finding', icon: './AWS_icon_pkg/Resource-Icons/AWS-Security-Hub_Finding_48.png' },
+{ name: 'AWS Shield_AWS Shield Advanced', icon: './AWS_icon_pkg/Resource-Icons/AWS-Shield_AWS-Shield-Advanced_48.png' },
+{ name: 'AWS Snowball_Snowball Import Export', icon: './AWS_icon_pkg/Resource-Icons/AWS-Snowball_Snowball-Import-Export_48.png' },
+{ name: 'AWS Storage Gateway_Amazon FSx File Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Amazon-FSx-File-Gateway_48.png' },
+{ name: 'AWS Storage Gateway_Amazon S3 File Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Amazon-S3-File-Gateway_48.png' },
+{ name: 'AWS Storage Gateway_Cached Volume', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Cached-Volume_48.png' },
+{ name: 'AWS Storage Gateway_File Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_File-Gateway_48.png' },
+{ name: 'AWS Storage Gateway_Noncached Volume', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Noncached-Volume_48.png' },
+{ name: 'AWS Storage Gateway_Tape Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Tape-Gateway_48.png' },
+{ name: 'AWS Storage Gateway_Virtual Tape Library', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Virtual-Tape-Library_48.png' },
+{ name: 'AWS Storage Gateway_Volume Gateway', icon: './AWS_icon_pkg/Resource-Icons/AWS-Storage-Gateway_Volume-Gateway_48.png' },
+{ name: 'AWS Systems Manager_Application Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Application-Manager_48.png' },
+{ name: 'AWS Systems Manager_Automation', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Automation_48.png' },
+{ name: 'AWS Systems Manager_Change Calendar', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Change-Calendar_48.png' },
+{ name: 'AWS Systems Manager_Change Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Change-Manager_48.png' },
+{ name: 'AWS Systems Manager_Compliance', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Compliance_48.png' },
+{ name: 'AWS Systems Manager_Distributor', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Distributor_48.png' },
+{ name: 'AWS Systems Manager_Documents', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Documents_48.png' },
+{ name: 'AWS Systems Manager_Incident Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Incident-Manager_48.png' },
+{ name: 'AWS Systems Manager_Inventory', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Inventory_48.png' },
+{ name: 'AWS Systems Manager_Maintenance Windows', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Maintenance-Windows_48.png' },
+{ name: 'AWS Systems Manager_OpsCenter', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_OpsCenter_48.png' },
+{ name: 'AWS Systems Manager_Parameter Store', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Parameter-Store_48.png' },
+{ name: 'AWS Systems Manager_Patch Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Patch-Manager_48.png' },
+{ name: 'AWS Systems Manager_Run Command', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Run-Command_48.png' },
+{ name: 'AWS Systems Manager_Session Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_Session-Manager_48.png' },
+{ name: 'AWS Systems Manager_State Manager', icon: './AWS_icon_pkg/Resource-Icons/AWS-Systems-Manager_State-Manager_48.png' },
+{ name: 'AWS Transfer Family_AWS AS2', icon: './AWS_icon_pkg/Resource-Icons/AWS-Transfer-Family_AWS-AS2_48.png' },
+{ name: 'AWS Transfer Family_AWS FTPS', icon: './AWS_icon_pkg/Resource-Icons/AWS-Transfer-Family_AWS-FTPS_48.png' },
+{ name: 'AWS Transfer Family_AWS FTP', icon: './AWS_icon_pkg/Resource-Icons/AWS-Transfer-Family_AWS-FTP_48.png' },
+{ name: 'AWS Transfer Family_AWS SFTP', icon: './AWS_icon_pkg/Resource-Icons/AWS-Transfer-Family_AWS-SFTP_48.png' },
+{ name: 'AWS Transit Gateway_Attachment', icon: './AWS_icon_pkg/Resource-Icons/AWS-Transit-Gateway_Attachment_48.png' },
+{ name: 'AWS Trusted Advisor_Checklist Cost', icon: './AWS_icon_pkg/Resource-Icons/AWS-Trusted-Advisor_Checklist-Cost_48.png' },
+{ name: 'AWS Trusted Advisor_Checklist Fault Tolerant', icon: './AWS_icon_pkg/Resource-Icons/AWS-Trusted-Advisor_Checklist-Fault-Tolerant_48.png' },
+{ name: 'AWS Trusted Advisor_Checklist Performance', icon: './AWS_icon_pkg/Resource-Icons/AWS-Trusted-Advisor_Checklist-Performance_48.png' },
+{ name: 'AWS Trusted Advisor_Checklist Security', icon: './AWS_icon_pkg/Resource-Icons/AWS-Trusted-Advisor_Checklist-Security_48.png' },
+{ name: 'AWS Trusted Advisor_Checklist', icon: './AWS_icon_pkg/Resource-Icons/AWS-Trusted-Advisor_Checklist_48.png' },
+{ name: 'AWS WAF_Bad Bot', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Bad-Bot_48.png' },
+{ name: 'AWS WAF_Bot Control', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Bot-Control_48.png' },
+{ name: 'AWS WAF_Bot', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Bot_48.png' },
+{ name: 'AWS WAF_Filtering Rule', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Filtering-Rule_48.png' },
+{ name: 'AWS WAF_Labels', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Labels_48.png' },
+{ name: 'AWS WAF_Managed Rule', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Managed-Rule_48.png' },
+{ name: 'AWS WAF_Rule', icon: './AWS_icon_pkg/Resource-Icons/AWS-WAF_Rule_48.png' },
+{ name: 'Camera', icon: './AWS_icon_pkg/Resource-Icons/Camera_48_Light.png' },
+{ name: 'Chat', icon: './AWS_icon_pkg/Resource-Icons/Chat_48_Light.png' },
+{ name: 'Client', icon: './AWS_icon_pkg/Resource-Icons/Client_48_Light.png' },
+{ name: 'Cold Storage', icon: './AWS_icon_pkg/Resource-Icons/Cold-Storage_48_Light.png' },
+{ name: 'Credentials', icon: './AWS_icon_pkg/Resource-Icons/Credentials_48_Light.png' },
+{ name: 'Data Stream', icon: './AWS_icon_pkg/Resource-Icons/Data-Stream_48_Light.png' },
+{ name: 'Data Table', icon: './AWS_icon_pkg/Resource-Icons/Data-Table_48_Light.png' },
+{ name: 'Database', icon: './AWS_icon_pkg/Resource-Icons/Database_48_Light.png' },
+{ name: 'Disk', icon: './AWS_icon_pkg/Resource-Icons/Disk_48_Light.png' },
+{ name: 'Documents', icon: './AWS_icon_pkg/Resource-Icons/Documents_48_Light.png' },
+{ name: 'Document', icon: './AWS_icon_pkg/Resource-Icons/Document_48_Light.png' },
+{ name: 'Elastic Load Balancing_Application Load Balancer', icon: './AWS_icon_pkg/Resource-Icons/Elastic-Load-Balancing_Application-Load-Balancer_48.png' },
+{ name: 'Elastic Load Balancing_Classic Load Balancer', icon: './AWS_icon_pkg/Resource-Icons/Elastic-Load-Balancing_Classic-Load-Balancer_48.png' },
+{ name: 'Elastic Load Balancing_Gateway Load Balancer', icon: './AWS_icon_pkg/Resource-Icons/Elastic-Load-Balancing_Gateway-Load-Balancer_48.png' },
+{ name: 'Elastic Load Balancing_Network Load Balancer', icon: './AWS_icon_pkg/Resource-Icons/Elastic-Load-Balancing_Network-Load-Balancer_48.png' },
+{ name: 'Email', icon: './AWS_icon_pkg/Resource-Icons/Email_48_Light.png' },
+{ name: 'Firewall', icon: './AWS_icon_pkg/Resource-Icons/Firewall_48_Light.png' },
+{ name: 'Folders', icon: './AWS_icon_pkg/Resource-Icons/Folders_48_Light.png' },
+{ name: 'Folder', icon: './AWS_icon_pkg/Resource-Icons/Folder_48_Light.png' },
+{ name: 'Forums', icon: './AWS_icon_pkg/Resource-Icons/Forums_48_Light.png' },
+{ name: 'Gear', icon: './AWS_icon_pkg/Resource-Icons/Gear_48_Light.png' },
+{ name: 'Generic Application', icon: './AWS_icon_pkg/Resource-Icons/Generic-Application_48_Light.png' },
+{ name: 'Git Repository', icon: './AWS_icon_pkg/Resource-Icons/Git-Repository_48_Light.png' },
+{ name: 'Globe', icon: './AWS_icon_pkg/Resource-Icons/Globe_48_Light.png' },
+{ name: 'Internet alt1', icon: './AWS_icon_pkg/Resource-Icons/Internet-alt1_48_Light.png' },
+{ name: 'Internet alt2', icon: './AWS_icon_pkg/Resource-Icons/Internet-alt2_48_Light.png' },
+{ name: 'Internet', icon: './AWS_icon_pkg/Resource-Icons/Internet_48_Light.png' },
+{ name: 'JSON Script', icon: './AWS_icon_pkg/Resource-Icons/JSON-Script_48_Light.png' },
+{ name: 'Logs', icon: './AWS_icon_pkg/Resource-Icons/Logs_48_Light.png' },
+{ name: 'Magnifying Glass', icon: './AWS_icon_pkg/Resource-Icons/Magnifying-Glass_48_Light.png' },
+{ name: 'Metrics', icon: './AWS_icon_pkg/Resource-Icons/Metrics_48_Light.png' },
+{ name: 'Mobile client', icon: './AWS_icon_pkg/Resource-Icons/Mobile-client_48_Light.png' },
+{ name: 'Multimedia', icon: './AWS_icon_pkg/Resource-Icons/Multimedia_48_Light.png' },
+{ name: 'Office building', icon: './AWS_icon_pkg/Resource-Icons/Office-building_48_Light.png' },
+{ name: 'Programming Language', icon: './AWS_icon_pkg/Resource-Icons/Programming-Language_48_Light.png' },
+{ name: 'Question', icon: './AWS_icon_pkg/Resource-Icons/Question_48_Light.png' },
+{ name: 'Recover', icon: './AWS_icon_pkg/Resource-Icons/Recover_48_Light.png' },
+{ name: 'SAML token', icon: './AWS_icon_pkg/Resource-Icons/SAML-token_48_Light.png' },
+{ name: 'SDK', icon: './AWS_icon_pkg/Resource-Icons/SDK_48_Light.png' },
+{ name: 'Servers', icon: './AWS_icon_pkg/Resource-Icons/Servers_48_Light.png' },
+{ name: 'Server', icon: './AWS_icon_pkg/Resource-Icons/Server_48_Light.png' },
+{ name: 'Shield', icon: './AWS_icon_pkg/Resource-Icons/Shield_48_Light.png' },
+{ name: 'Source Code', icon: './AWS_icon_pkg/Resource-Icons/Source-Code_48_Light.png' },
+{ name: 'SSL padlock', icon: './AWS_icon_pkg/Resource-Icons/SSL-padlock_48_Light.png' },
+{ name: 'Tape storage', icon: './AWS_icon_pkg/Resource-Icons/Tape-storage_48_Light.png' },
+{ name: 'Toolkit', icon: './AWS_icon_pkg/Resource-Icons/Toolkit_48_Light.png' },
+{ name: 'Users', icon: './AWS_icon_pkg/Resource-Icons/Users_48_Light.png' },
+{ name: 'User', icon: './AWS_icon_pkg/Resource-Icons/User_48_Light.png' },
+
+];
+
+  // ===== グローバル変数 =====
+  let currentQuizList = []; // 出題リスト（シャッフル済み）
+  let currentIndex = 0;     // 現在の問題番号（0始まり）
+  let correctCount = 0;     // 正解数カウンター
+  let chartInstance = null; // Chart.jsインスタンス（再描画時に破棄するため保持）
+
+  // 途中でホームに戻る（確認ダイアログ付き）
+  function confirmBackToHome() {
+    if (confirm('クイズを中断してホームに戻りますか？\n進捗は保存されません。')) {
+      showScreen('home-screen');
+    }
+  }
+
+  // 学習履歴をlocalStorageから削除してグラフをリセット
+  function resetHistory() {
+    if (!confirm('学習履歴をすべて削除しますか？')) return;
+    localStorage.removeItem('aws_quiz_history');
+    showHistory();
+  }
+
+  // 指定IDの画面を表示し、他を非表示にする
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  // クイズを開始する（出題数を受け取りリストを生成）
+  function startQuiz(count) {
+    let pool = [];
+    while (pool.length < count) {
+      pool = pool.concat([...AWS_SERVICES].sort(() => 0.5 - Math.random()));
+    }
+    currentQuizList = pool.slice(0, count);
+    currentIndex = 0;
+    correctCount = 0;
+    
+    showScreen('quiz-screen');
+    renderQuestion();
+  }
+
+  // 現在の問題を画面に描画する
+  function renderQuestion() {
+    const currentQ = currentQuizList[currentIndex];
+    document.getElementById('quiz-progress').textContent = `第 ${currentIndex + 1} 問 / ${currentQuizList.length} 問`;
+    document.getElementById('quiz-score-preview').textContent = `正解数: ${correctCount}`;
+
+    const nextBtn = document.getElementById('next-btn');
+    nextBtn.disabled = true;
+    nextBtn.textContent = currentIndex === currentQuizList.length - 1 ? '結果を見る ▶' : '次の問題 ▶';
+
+    const iconImg = document.getElementById('quiz-icon');
+    iconImg.src = currentQ.icon;
+    iconImg.onerror = () => { console.error('画像が見つかりません: ' + currentQ.icon); };
+
+    const wrongOptions = AWS_SERVICES
+      .filter(s => s.name !== currentQ.name)
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3)
+      .map(s => s.name);
+
+    const options = [currentQ.name, ...wrongOptions].sort(() => 0.5 - Math.random());
+
+    const optContainer = document.getElementById('options-container');
+    optContainer.innerHTML = '';
+    options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.textContent = opt;
+      btn.onclick = () => checkAnswer(opt, currentQ.name);
+      optContainer.appendChild(btn);
+    });
+  }
+
+  // 回答を判定し、正解・不正解をボタンに色付けする
+  function checkAnswer(selected, correctName) {
+    const isCorrect = selected === correctName;
+    if (isCorrect) correctCount++;
+
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.disabled = true;
+      if (btn.textContent === correctName) btn.classList.add('correct');
+      else if (btn.textContent === selected) btn.classList.add('wrong');
+    });
+
+    document.getElementById('next-btn').disabled = false;
+  }
+
+  // 次の問題へ進む（最終問題なら結果画面へ）
+  function nextQuestion() {
+    currentIndex++;
+    if (currentIndex < currentQuizList.length) {
+      renderQuestion();
+    } else {
+      finishQuiz();
+    }
+  }
+
+  // クイズ終了処理：結果を集計してお疲れさま画面を表示
+  function finishQuiz() {
+    const total = currentQuizList.length;
+    const rate = Math.round((correctCount / total) * 100);
+
+    saveHistory({
+      date: new Date().toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      total, correct: correctCount, rate
+    });
+
+    document.getElementById('cg-total').textContent = total;
+    document.getElementById('cg-correct').textContent = correctCount;
+    document.getElementById('cg-rate').textContent = `${rate}%`;
+    const msg = rate === 100 ? '全問正解！素晴らしい！🏆' : rate >= 80 ? 'よくできました！👏' : rate >= 50 ? 'もう少しで合格ライン！💪' : '次回はもっと頑張ろう！📚';
+    document.getElementById('congrats-msg').textContent = msg;
+
+    showScreen('congrats-screen');
+  }
+
+  // 1回分の結果をlocalStorageに追記保存
+  function saveHistory(record) {
+    const history = JSON.parse(localStorage.getItem('aws_quiz_history') || '[]');
+    history.push(record);
+    localStorage.setItem('aws_quiz_history', JSON.stringify(history));
+  }
+
+  // 学習履歴画面を表示し、グラフを描画する
+  function showHistory() {
+    showScreen('history-screen');
+    const history = JSON.parse(localStorage.getItem('aws_quiz_history') || '[]');
+
+    let cumulativeAnswered = 0;
+    let cumulativeCorrect = 0;
+    const cumulativeRates = [];
+    
+    history.forEach(item => {
+      cumulativeAnswered += item.total;
+      cumulativeCorrect += item.correct;
+      cumulativeRates.push(Math.round((cumulativeCorrect / cumulativeAnswered) * 100));
+    });
+
+    const overallAccuracy = cumulativeAnswered > 0 ? Math.round((cumulativeCorrect / cumulativeAnswered) * 100) : 0;
+
+    document.getElementById('total-sessions').textContent = `${history.length} 回`;
+    document.getElementById('total-answered').textContent = `${cumulativeAnswered} 問`;
+    document.getElementById('total-accuracy').textContent = `${overallAccuracy}%`;
+
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    Chart.defaults.color = '#FFFFFF';
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: history.map(h => h.date),
+        datasets: [
+          {
+            label: '解いた問題数 (問)',
+            data: history.map(h => h.total),
+            backgroundColor: 'rgba(135, 206, 235, 0.5)',
+            borderColor: '#87CEEB',
+            borderWidth: 1,
+            yAxisID: 'yCount',
+            type: 'bar'
+          },
+          {
+            label: '回の正答率 (%)',
+            data: history.map(h => h.rate),
+            borderColor: '#FF9900',
+            backgroundColor: '#FF9900',
+            type: 'line',
+            yAxisID: 'yRate',
+            tension: 0.2
+          },
+          {
+            label: '総合正答率 (%)',
+            data: cumulativeRates,
+            borderColor: '#28a745',
+            backgroundColor: '#28a745',
+            borderDash: [5, 5],
+            type: 'line',
+            yAxisID: 'yRate',
+            tension: 0.2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          yCount: {
+            type: 'linear',
+            position: 'left',
+            title: { display: true, text: '問題数', color: '#FFFFFF' },
+            beginAtZero: true,
+            ticks: { color: '#FFFFFF' },
+            grid: { color: 'rgba(255,255,255,0.15)' }
+          },
+          yRate: {
+            type: 'linear',
+            position: 'right',
+            title: { display: true, text: '正答率 (%)', color: '#FFFFFF' },
+            min: 0,
+            max: 100,
+            ticks: { color: '#FFFFFF' },
+            grid: { drawOnChartArea: false }
+          },
+          x: {
+            ticks: { color: '#FFFFFF' },
+            grid: { color: 'rgba(255,255,255,0.15)' }
+          }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
