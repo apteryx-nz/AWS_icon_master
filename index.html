@@ -17,7 +17,7 @@
       --text-color: #E0E0E0;
       --muted-color: #999;
     }
-    /* ペ�Eジ全体�EレイアウチE*/
+    /* ページ全体のレイアウト */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg-color);
@@ -27,7 +27,7 @@
       display: flex;
       justify-content: center;
     }
-    /* メインコンチE�� */
+    /* メインコンテナ */
     .container {
       width: 100%;
       max-width: 650px;
@@ -36,12 +36,12 @@
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
-    /* 見�Eしスタイル */
+    /* 見出しスタイル */
     h1, h2 {
       text-align: center;
       color: var(--aws-orange);
     }
-    /* 共通�Eタン */
+    /* 共通ボタン */
     .btn {
       background-color: var(--aws-orange);
       color: #fff;
@@ -55,13 +55,13 @@
       transition: opacity 0.2s;
     }
     .btn:hover { opacity: 0.85; }
-    /* サブ�Eタン�E�ダーク�E�E*/
+    /* サブボタン（ダーク） */
     .btn-secondary { background-color: var(--aws-squid); }
-    /* 画面刁E��替え制御 */
+    /* 画面切り替え制御 */
     .screen { display: none; }
     .screen.active { display: block; }
     
-    /* クイズヘッダー�E�問題数・正解数・ホ�Eムボタン */
+    /* クイズヘッダー：問題数・正解数・ホームボタン */
     .quiz-header {
       display: flex;
       justify-content: space-between;
@@ -104,12 +104,12 @@
       cursor: pointer;
       text-align: center;
     }
-    /* 回答�Eタン�E��Eバ�E・正解・不正解 */
+    /* 回答ボタン：ホバー・正解・不正解 */
     .option-btn:hover { border-color: var(--aws-orange); }
     .option-btn.correct { background: #1a5c2a; border-color: #28a745; color: #fff; }
     .option-btn.wrong { background: #5c1a1a; border-color: #dc3545; color: #fff; }
     .option-btn:disabled { cursor: default; opacity: 1; }
-    /* 次の問題�Eタン */
+    /* 次の問題ボタン */
     #next-btn { display: block; width: 100%; margin-top: 16px; }
     #next-btn:disabled { opacity: 0.4; cursor: default; }
 
@@ -118,7 +118,7 @@
     .confetti-wrap { font-size: 48px; letter-spacing: 8px; margin: 20px 0; animation: pop 0.6s ease; }
     @keyframes pop { 0%{transform:scale(0.5);opacity:0} 80%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
 
-    /* ===== 統計�Eグラフ画面 ===== */
+    /* ===== 統計・グラフ画面 ===== */
     .stats-summary {
       display: flex;
       justify-content: space-around;
@@ -134,9 +134,9 @@
 <body>
 
 <div class="container">
-  <!-- ホ�Eム画面 -->
+  <!-- ホーム画面 -->
   <div id="home-screen" class="screen active">
-    <h1>☁E��EAWS アイコンマスター</h1>
+    <h1>☁️ AWS アイコンマスター</h1>
     <p style="text-align:center;">出題数を選択してスタートしてください</p>
     <div style="text-align:center; margin: 30px 0;">
       <button class="btn" onclick="startQuiz(10)">10問コース</button>
@@ -152,22 +152,22 @@
   <div id="quiz-screen" class="screen">
     <div class="quiz-header">
       <div class="quiz-header-left">
-        <span id="quiz-progress">第 1 啁E/ 10 啁E/span>
+        <span id="quiz-progress">第 1 問 / 10 問</span>
         <span id="quiz-score-preview">正解数: 0</span>
       </div>
-      <button class="btn btn-secondary" style="padding:6px 12px; font-size:13px;" onclick="confirmBackToHome()">⌁Eホ�Eムに戻めE/button>
+      <button class="btn btn-secondary" style="padding:6px 12px; font-size:13px;" onclick="confirmBackToHome()">⌂ ホームに戻る</button>
     </div>
     <div class="icon-container">
       <img id="quiz-icon" src="" alt="AWS Icon">
     </div>
     <div class="options-grid" id="options-container"></div>
-    <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>次の問顁E▶</button>
+    <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>次の問題 ▶</button>
   </div>
 
   <!-- お疲れさまでした画面 -->
   <div id="congrats-screen" class="screen">
     <div class="confetti-wrap">🎉🎊🎉🎊🎉</div>
-    <h2>お疲れさまでした�E�E/h2>
+    <h2>お疲れさまでした！</h2>
     <p id="congrats-msg" style="font-size:18px; margin: 16px 0;"></p>
     <div class="stats-summary">
       <div class="stat-item"><div>問題数</div><div class="stat-value" id="cg-total">0</div></div>
@@ -176,7 +176,7 @@
     </div>
     <div style="margin-top:20px;">
       <button class="btn" onclick="showScreen('home-screen')">もう一度挑戦</button>
-      <button class="btn btn-secondary" onclick="showHistory()">📊 履歴を確誁E/button>
+      <button class="btn btn-secondary" onclick="showHistory()">📊 履歴を確認</button>
     </div>
   </div>
 
@@ -199,7 +199,7 @@
     </div>
     <div style="text-align:center;">
       <button class="btn" onclick="showScreen('home-screen')">もう一度挑戦</button>
-      <button class="btn btn-secondary" onclick="showHistory()">📊 履歴を確誁E/button>
+      <button class="btn btn-secondary" onclick="showHistory()">📊 履歴を確認</button>
     </div>
   </div>
 
@@ -209,11 +209,11 @@
     <div class="stats-summary">
       <div class="stat-item">
         <div>累計挑戦回数</div>
-        <div class="stat-value" id="total-sessions">0囁E/div>
+        <div class="stat-value" id="total-sessions">0回</div>
       </div>
       <div class="stat-item">
         <div>総解答数</div>
-        <div class="stat-value" id="total-answered">0啁E/div>
+        <div class="stat-value" id="total-answered">0問</div>
       </div>
       <div class="stat-item">
         <div>総合正答率</div>
@@ -222,17 +222,17 @@
     </div>
     <canvas id="historyChart" style="max-height: 350px;"></canvas>
     <div style="text-align:center; margin-top: 20px;">
-      <button class="btn" onclick="showScreen('home-screen')">ホ�Eムに戻めE/button>
-      <button class="btn btn-secondary" onclick="resetHistory()">🗑�E�E履歴をリセチE��</button>
+      <button class="btn" onclick="showScreen('home-screen')">ホームに戻る</button>
+      <button class="btn btn-secondary" onclick="resetHistory()">🗑️ 履歴をリセット</button>
     </div>
   </div>
 </div>
 
 <script>
   // ==========================================
-  // 【重要】ローカルのAWSアイコンリスチE
-  // パスはお手允E�Eフォルダ階層に合わせて調整してください
-  // 形弁E { name: 'サービス吁E, icon: '画像パス' }
+  // 【重要】ローカルのAWSアイコンリスト
+  // パスはお手元のフォルダ階層に合わせて調整してください
+  // 形式: { name: 'サービス名', icon: '画像パス' }
   // ==========================================
   const AWS_SERVICES = [
 
@@ -1062,32 +1062,32 @@
 ];
 
   // ===== グローバル変数 =====
-  let currentQuizList = []; // 出題リスト（シャチE��ル済み�E�E
-  let currentIndex = 0;     // 現在の問題番号�E�E始まり！E
+  let currentQuizList = []; // 出題リスト（シャッフル済み）
+  let currentIndex = 0;     // 現在の問題番号（0始まり）
   let correctCount = 0;     // 正解数カウンター
-  let chartInstance = null; // Chart.jsインスタンス�E��E描画時に破棁E��るため保持�E�E
+  let chartInstance = null; // Chart.jsインスタンス（再描画時に破棄するため保持）
 
-  // 途中でホ�Eムに戻る（確認ダイアログ付き�E�E
+  // 途中でホームに戻る（確認ダイアログ付き）
   function confirmBackToHome() {
-    if (confirm('クイズを中断してホ�Eムに戻りますか�E�\n進捗�E保存されません、E)) {
+    if (confirm('クイズを中断してホームに戻りますか？\n進捗は保存されません。')) {
       showScreen('home-screen');
     }
   }
 
-  // 学習履歴をlocalStorageから削除してグラフをリセチE��
+  // 学習履歴をlocalStorageから削除してグラフをリセット
   function resetHistory() {
-    if (!confirm('学習履歴をすべて削除しますか�E�E)) return;
+    if (!confirm('学習履歴をすべて削除しますか？')) return;
     localStorage.removeItem('aws_quiz_history');
     showHistory();
   }
 
-  // 持E��IDの画面を表示し、他を非表示にする
+  // 指定IDの画面を表示し、他を非表示にする
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
   }
 
-  // クイズを開始する（�E題数を受け取りリストを生�E�E�E
+  // クイズを開始する（出題数を受け取りリストを生成）
   function startQuiz(count) {
     let pool = [];
     while (pool.length < count) {
@@ -1104,12 +1104,12 @@
   // 現在の問題を画面に描画する
   function renderQuestion() {
     const currentQ = currentQuizList[currentIndex];
-    document.getElementById('quiz-progress').textContent = `第 ${currentIndex + 1} 啁E/ ${currentQuizList.length} 問`;
+    document.getElementById('quiz-progress').textContent = `第 ${currentIndex + 1} 問 / ${currentQuizList.length} 問`;
     document.getElementById('quiz-score-preview').textContent = `正解数: ${correctCount}`;
 
     const nextBtn = document.getElementById('next-btn');
     nextBtn.disabled = true;
-    nextBtn.textContent = currentIndex === currentQuizList.length - 1 ? '結果を見る ▶' : '次の問顁E▶';
+    nextBtn.textContent = currentIndex === currentQuizList.length - 1 ? '結果を見る ▶' : '次の問題 ▶';
 
     const iconImg = document.getElementById('quiz-icon');
     iconImg.src = currentQ.icon;
@@ -1134,7 +1134,7 @@
     });
   }
 
-  // 回答を判定し、正解・不正解を�Eタンに色付けする
+  // 回答を判定し、正解・不正解をボタンに色付けする
   function checkAnswer(selected, correctName) {
     const isCorrect = selected === correctName;
     if (isCorrect) correctCount++;
@@ -1148,7 +1148,7 @@
     document.getElementById('next-btn').disabled = false;
   }
 
-  // 次の問題へ進む�E�最終問題なら結果画面へ�E�E
+  // 次の問題へ進む（最終問題なら結果画面へ）
   function nextQuestion() {
     currentIndex++;
     if (currentIndex < currentQuizList.length) {
@@ -1158,7 +1158,7 @@
     }
   }
 
-  // クイズ終亁E�E琁E��結果を集計してお疲れさま画面を表示
+  // クイズ終了処理：結果を集計してお疲れさま画面を表示
   function finishQuiz() {
     const total = currentQuizList.length;
     const rate = Math.round((correctCount / total) * 100);
@@ -1171,13 +1171,13 @@
     document.getElementById('cg-total').textContent = total;
     document.getElementById('cg-correct').textContent = correctCount;
     document.getElementById('cg-rate').textContent = `${rate}%`;
-    const msg = rate === 100 ? '全問正解�E�素晴らしぁE��🏁E : rate >= 80 ? 'よくできました�E�👁E : rate >= 50 ? 'もう少しで合格ライン�E�💪' : '次回�Eもっと頑張ろう�E�📁E;
+    const msg = rate === 100 ? '全問正解！素晴らしい！🏆' : rate >= 80 ? 'よくできました！👏' : rate >= 50 ? 'もう少しで合格ライン！💪' : '次回はもっと頑張ろう！📚';
     document.getElementById('congrats-msg').textContent = msg;
 
     showScreen('congrats-screen');
   }
 
-  // 1回�Eの結果をlocalStorageに追記保孁E
+  // 1回分の結果をlocalStorageに追記保存
   function saveHistory(record) {
     const history = JSON.parse(localStorage.getItem('aws_quiz_history') || '[]');
     history.push(record);
@@ -1216,7 +1216,7 @@
         labels: history.map(h => h.date),
         datasets: [
           {
-            label: '解ぁE��問題数 (啁E',
+            label: '解いた問題数 (問)',
             data: history.map(h => h.total),
             backgroundColor: 'rgba(135, 206, 235, 0.5)',
             borderColor: '#87CEEB',
@@ -1225,7 +1225,7 @@
             type: 'bar'
           },
           {
-            label: '回�E正答率 (%)',
+            label: '回の正答率 (%)',
             data: history.map(h => h.rate),
             borderColor: '#FF9900',
             backgroundColor: '#FF9900',
